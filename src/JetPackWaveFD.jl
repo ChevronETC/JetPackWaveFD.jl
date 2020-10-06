@@ -1,6 +1,6 @@
 module JetPackWaveFD
 
-using CRC32c, Distributed, DistributedJets, DistributedOperations, JetPack, Jets, LinearAlgebra, Printf, Statistics, UUIDs, Wave
+using CRC32c, Distributed, DistributedJets, DistributedOperations, JetPack, Jets, LinearAlgebra, Printf, Statistics, UUIDs, WaveFD
 
 function isvalid_srcfieldfile(m::AbstractArray, hostname, srcfieldfile, chksum)
     _chksum = crc32c(m)

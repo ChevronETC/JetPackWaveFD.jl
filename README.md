@@ -19,7 +19,7 @@
 
 ## Companion packages in the COFII framework
 - Jets - https://github.com/ChevronETC/Jets.jl
-- Wave - https://github.com/ChevronETC/Wave.jl
+- WaveFD - https://github.com/ChevronETC/WaveFD.jl
 - DistributedJets - https://github.com/ChevronETC/DistributedJets.jl
 - JetPack - https://github.com/ChevronETC/JetPack.jl
 - JetPackDSP - https://github.com/ChevronETC/JetPackDSP.jl

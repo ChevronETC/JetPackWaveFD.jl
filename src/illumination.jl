@@ -1,30 +1,30 @@
-# Jets/Wave bridge
-function srcillum(filename::AbstractString, compressor::Wave.Compressor, interior::Bool, ::Type{T}, ginsu::Ginsu, nz::Int, ny::Int, nx::Int, ntrec::Int, nthreads::Int) where {T}
+# Jets/WaveFD bridge
+function srcillum(filename::AbstractString, compressor::WaveFD.Compressor, interior::Bool, ::Type{T}, ginsu::Ginsu, nz::Int, ny::Int, nx::Int, ntrec::Int, nthreads::Int) where {T}
     srcillum!(zeros(T, nz, ny, nx), filename, compressor, interior, ginsu, ntrec, nthreads)
 end
 
-function srcillum!(γ::AbstractArray{T,3}, filename::AbstractString, compressor::Wave.Compressor, interior::Bool, ginsu::Ginsu, ntrec::Int, nthreads::Int) where {T}
+function srcillum!(γ::AbstractArray{T,3}, filename::AbstractString, compressor::WaveFD.Compressor, interior::Bool, ginsu::Ginsu, ntrec::Int, nthreads::Int) where {T}
     io = open(filename)
     field_ginsu = zeros(T, size(ginsu, interior=interior))
     for it = 1:ntrec
-        Wave.compressedread!(io, compressor, it, field_ginsu)
-        Wave.srcillum_helper(field_ginsu, nthreads)
+        WaveFD.compressedread!(io, compressor, it, field_ginsu)
+        WaveFD.srcillum_helper(field_ginsu, nthreads)
         super!(γ, ginsu, field_ginsu, accumulate=true, interior=interior)
     end
     close(io)
     γ
 end
 
-function srcillum(filename::AbstractString, compressor::Wave.Compressor, interior::Bool, ::Type{T}, ginsu::Ginsu, nz::Int, nx::Int, ntrec::Int, nthreads::Int) where {T}
+function srcillum(filename::AbstractString, compressor::WaveFD.Compressor, interior::Bool, ::Type{T}, ginsu::Ginsu, nz::Int, nx::Int, ntrec::Int, nthreads::Int) where {T}
 	srcillum!(zeros(T, nz, nx), filename, compressor, ginsu, ntrec, nthreads)
 end
 
-function srcillum!(γ::AbstractArray{T,2}, filename::AbstractString, compressor::Wave.Compressor, interior::Bool, ginsu::Ginsu, ntrec::Int, nthreads::Int) where {T}
+function srcillum!(γ::AbstractArray{T,2}, filename::AbstractString, compressor::WaveFD.Compressor, interior::Bool, ginsu::Ginsu, ntrec::Int, nthreads::Int) where {T}
     io = open(filename)
     field_ginsu = zeros(T, size(ginsu, interior=interior))
     for it = 1:ntrec
-        Wave.compressedread!(io, compressor, it, field_ginsu)
-        Wave.srcillum_helper(field_ginsu, nthreads)
+        WaveFD.compressedread!(io, compressor, it, field_ginsu)
+        WaveFD.srcillum_helper(field_ginsu, nthreads)
         super!(γ, ginsu, field_ginsu, accumulate=true, interior=interior)
     end
     close(io)

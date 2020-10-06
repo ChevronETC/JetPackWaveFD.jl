@@ -1,4 +1,4 @@
-using FFTW, JetPackWaveFD, Jets, LinearAlgebra, Printf, Random, SpecialFunctions, Statistics, Test, Wave
+using FFTW, JetPackWaveFD, Jets, LinearAlgebra, Printf, Random, SpecialFunctions, Statistics, Test, WaveFD
 
 function make_op(modeltype, interpmethod, fs; v₀=1500, ϵ₀=0.2, η₀=0.4, comptype = Float32)
     nsponge = 10
@@ -172,7 +172,7 @@ end
         w = range(0, stop=pi/dtrec, length=nw)
 
         # wavelet
-        f = Wave.get(fdef, dtrec*collect(0:nt_pad-1))
+        f = WaveFD.get(fdef, dtrec*collect(0:nt_pad-1))
         F = rfft(f)
 
         # Morse and Feshbach, 1953, p. 891
@@ -254,7 +254,7 @@ end
 
     open(state(M).compressor["pold"])
     for i = 1:state(M).ntrec
-        Wave.compressedread!(io, state(M).compressor["pold"], i, u_snap_ginsu)
+        WaveFD.compressedread!(io, state(M).compressor["pold"], i, u_snap_ginsu)
         super!(u_snap,state(M).ginsu,u_snap_ginsu,interior=false)
         u_fd[i,:,:,:] = u_snap[:,:,:]
     end

@@ -11,18 +11,18 @@ function JopSincRegular(dom::JetSpace{T,2}, rng::JetSpace{T,2}, dtdom, dtrng, nt
 	n1rng,n2rng = size(rng)
     @assert n1dom < n1rng   # coarse to dense
     @assert n2dom == n2rng  # same size slow dimension
-    filters = Wave.interpfilters(T(dtrng), T(dtdom), 0, Wave.LangC(), nthreads)
+    filters = WaveFD.interpfilters(T(dtrng), T(dtdom), 0, WaveFD.LangC(), nthreads)
 	JopLn(dom = dom, rng = rng, df! = JopSincRegular_df!, df′! = JopSincRegular_df′!, s = (filters=filters, nthreads=nthreads))
 end
 
 export JopSincRegular
 
 function JopSincRegular_df!(d::AbstractArray{T,2}, m::AbstractArray{T,2}; filters, nthreads, kwargs...) where {T}
-    Wave.interpadjoint!(filters, d, m) # from coarse to dense
+    WaveFD.interpadjoint!(filters, d, m) # from coarse to dense
     d
 end
 
 function JopSincRegular_df′!(m::AbstractArray{T,2}, d::AbstractArray{T,2}; filters, nthreads, kwargs...) where {T}
-    Wave.interpforward!(filters, m, d) # from dense to coarse
+    WaveFD.interpforward!(filters, m, d) # from dense to coarse
     m
 end

@@ -1,4 +1,4 @@
-using FFTW, Jets, JetPackWaveFD, LinearAlgebra, Printf, SpecialFunctions, Statistics, Test, Wave
+using FFTW, Jets, JetPackWaveFD, LinearAlgebra, Printf, SpecialFunctions, Statistics, Test, WaveFD
 
 function make_op(modeltype, interpmethod, fs; v₀=1500, ϵ₀=0.2, η₀=0.4, comptype = Float32)
     nsponge = 10
@@ -171,7 +171,7 @@ end
         w = range(0, stop=pi/dtrec, length=nw)
 
         # wavelet
-        f = Wave.get(fdef, dtrec*collect(0:nt_pad-1))
+        f = WaveFD.get(fdef, dtrec*collect(0:nt_pad-1))
         F = rfft(f)
 
         # Morse and Feshbach, 1953, p. 891
