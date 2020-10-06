@@ -87,7 +87,7 @@ function JetProp3DAcoIsoDenQ_DEO2_FDTD(;
             (nz_subcube,ny_subcube,nx_subcube), compscale, ntrec, isinterior)
     end
 
-    jet = Jet(
+    Jet(
         dom = dom,
         rng = rng,
         f! = JopProp3DAcoIsoDenQ_DEO2_FDTD_f!,
@@ -133,14 +133,6 @@ function JetProp3DAcoIsoDenQ_DEO2_FDTD(;
             nthreads = nthreads,
             reportinterval = reportinterval,
             stats = Dict{String,Float64}("MCells/s"=>0.0, "%io"=>0.0, "%inject/extract"=>0.0, "%imaging"=>0.0)))
-
-    # add removal of scratch (srcfieldfile) to garbage collection:
-    if srcfieldfile != ""
-        # finalizer(close, jet)
-        close(jet)
-    end
-
-    jet
 end
 
 @doc """

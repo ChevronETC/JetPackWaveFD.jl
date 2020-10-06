@@ -74,7 +74,7 @@ function JetProp2DAcoIsoDenQ_DEO2_FDTD(;
         compressor[wavefield_active] = WaveFD.Compressor(Float32, Float32, C, size(ginsu,interior=isinterior), (nz_subcube,nx_subcube), compscale, ntrec, isinterior)
     end
 
-    jet = Jet(
+    Jet(
         dom = dom,
         rng = rng,
         f! = JopProp2DAcoIsoDenQ_DEO2_FDTD_f!,
@@ -114,14 +114,6 @@ function JetProp2DAcoIsoDenQ_DEO2_FDTD(;
             nthreads = nthreads,
             reportinterval = reportinterval,
             stats = Dict{String,Float64}("MCells/s"=>0.0, "%io"=>0.0, "%inject/extract"=>0.0, "%imaging"=>0.0)))
-
-    # add removal of scratch (srcfieldfile) to garbage collection:
-    if srcfieldfile != ""
-        # finalizer(close, jet)
-        close(jet)
-    end
-
-    jet
 end
 
 @doc """

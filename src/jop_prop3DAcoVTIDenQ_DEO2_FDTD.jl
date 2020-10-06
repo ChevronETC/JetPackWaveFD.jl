@@ -121,7 +121,7 @@ function JetProp3DAcoVTIDenQ_DEO2_FDTD(;
     end
 
     # construct:
-    jet = Jet(
+    Jet(
         dom = dom,
         rng = rng,
         f! = JopProp3DAcoVTIDenQ_DEO2_FDTD_f!,
@@ -171,14 +171,6 @@ function JetProp3DAcoVTIDenQ_DEO2_FDTD(;
             nthreads = nthreads,
             reportinterval = reportinterval,
             stats = Dict{String,Float64}("MCells/s"=>0.0, "%io"=>0.0, "%inject/extract"=>0.0, "%imaging"=>0.0)))
-
-    # add removal of scratch (srcfieldfile) to garbage collection:
-    if srcfieldfile != ""
-        # finalizer(close, jet)
-        close(jet)
-    end
-
-    jet
 end
 
 @doc """
