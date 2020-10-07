@@ -2,7 +2,7 @@ using Documenter, JetPackWaveFD
 
 makedocs(
     sitename="JetPackWaveFD.jl",
-    modules=[Jets],
+    modules=[JetPackWaveFD],
     pages = [ "index.md", "reference.md" ]
 )
 
