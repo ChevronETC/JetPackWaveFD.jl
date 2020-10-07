@@ -34,6 +34,8 @@ We use the package `CvxCompress.jl`, which is built on the C++ library `CvxCompr
 
 ## See Also
 * `WaveFD` single time step modeling implementations wrapping high performance C++ kernels.
+* `Source Wavelets` section in the `WaveFD` documentation, discussing a selection of
+wavelets commonly used in seismic modeling.
 * `JetPackWaveDevito` package, implementing these same 6 operators using the Devito domain specific language (https://www.devitoproject.org/).
 
 ## References
