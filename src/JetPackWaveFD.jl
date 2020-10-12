@@ -48,6 +48,6 @@ include("jop_prop3DAcoTTIDenQ_DEO2_FDTD.jl")
 include("jop_prop3DAcoVTIDenQ_DEO2_FDTD.jl")
 include("jop_sinc_regular.jl")
 
-export modelindex
+export modelindex, srcillum, srcillum!
 
 end
