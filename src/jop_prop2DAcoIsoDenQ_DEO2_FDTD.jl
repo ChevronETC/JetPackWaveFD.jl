@@ -436,7 +436,7 @@ function JopProp2DAcoIsoDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
     nothing
 end
 
-function JopProp2DAcoIsoDenQ_DEO2_FDTD_f!(d::AbstractArray, m::AbstractArray; kwargs...)
+function JopProp2DAcoIsoDenQ_DEO2_FDTD_f!(d::AbstractArray, m::AbstractArray{Float32}; kwargs...)
     d .= 0
     isvalid, _chksum = isvalid_srcfieldfile(m, kwargs[:srcfieldhost][], kwargs[:srcfieldfile]*"-P", kwargs[:chksum][])
     if !isvalid
@@ -663,7 +663,7 @@ function JopProp2DAcoIsoDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
     δm
 end
 
-function srcillum!(γ, A::T, m::AbstractArray) where {D,R,J<:Jet{D,R,typeof(JopProp2DAcoIsoDenQ_DEO2_FDTD_f!)},T<:Jop{J}}
+function srcillum!(γ, A::T, m::AbstractArray{Float32}) where {D,R,J<:Jet{D,R,typeof(JopProp2DAcoIsoDenQ_DEO2_FDTD_f!)},T<:Jop{J}}
     s = state(A)
     isvalid, _chksum = isvalid_srcfieldfile(m, s.srcfieldhost[], s.srcfieldfile*"-P", s.chksum[])
     if !isvalid
