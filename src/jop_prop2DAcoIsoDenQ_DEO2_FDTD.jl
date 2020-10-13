@@ -434,8 +434,6 @@ function JopProp2DAcoIsoDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
     free(p)
 
     nothing
-
-
 end
 
 function JopProp2DAcoIsoDenQ_DEO2_FDTD_f!(d::AbstractArray, m::AbstractArray{Float32}; kwargs...)
