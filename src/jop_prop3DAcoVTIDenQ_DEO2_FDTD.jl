@@ -569,7 +569,7 @@ function JopProp3DAcoVTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
     nothing
 end
 
-function JopProp3DAcoVTIDenQ_DEO2_FDTD_f!(d::AbstractArray, m::AbstractArray; kwargs...)
+function JopProp3DAcoVTIDenQ_DEO2_FDTD_f!(d::AbstractArray, m::AbstractArray{Float32}; kwargs...)
     d .= 0
     isvalid, _chksum = isvalid_srcfieldfile(m, kwargs[:srcfieldhost][], kwargs[:srcfieldfile]*"-pold", kwargs[:chksum][])
     if !isvalid
@@ -851,7 +851,7 @@ end
 
 modelindex(F::Jop{T}, key::AbstractString) where {D,R,T<:Jet{D,R,typeof(JopProp3DAcoVTIDenQ_DEO2_FDTD_f!)}} = state(F).active_modelset[key]
 
-function srcillum!(γ, A::T, m::AbstractArray) where {D,R,J<:Jet{D,R,typeof(JopProp3DAcoVTIDenQ_DEO2_FDTD_f!)},T<:Jop{J}}
+function srcillum!(γ, A::T, m::AbstractArray{Float32}) where {D,R,J<:Jet{D,R,typeof(JopProp3DAcoVTIDenQ_DEO2_FDTD_f!)},T<:Jop{J}}
     s = state(A)
     isvalid, _chksum = isvalid_srcfieldfile(m, s.srcfieldhost[], s.srcfieldfile*"-pold", s.chksum[])
     if !isvalid
