@@ -477,13 +477,14 @@ function JopProp3DAcoVTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
     end
     blks_sou = WaveFD.source_blocking(nz_ginsu, ny_ginsu, nx_ginsu, kwargs[:nbz_inject], kwargs[:nby_inject], kwargs[:nbx_inject], iz_sou, iy_sou, ix_sou, c_sou)
 
-    c_sou_scaled = deepcopy(c_sou)
+    c_sou_scaled = Array{Array{Float32,3},1}(undef, length(c_sou))
     for i = 1:length(c_sou_scaled)
+        c_sou_scaled[i] = similar(c_sou[i])
         for ix = 1:size(c_sou_scaled[i], 3), iy = 1:size(c_sou_scaled[i], 2), iz = 1:size(c_sou_scaled[i], 1)
             jz = iz_sou[i][iz]
             jy = iy_sou[i][iy]
             jx = ix_sou[i][ix]
-            c_sou_scaled[i][iz,iy,ix] *= kwargs[:dtmod]^2 * model_ginsu["v"][jz,jy,jx]^2 / model_ginsu["b"][jz,jy,jx]
+            c_sou_scaled[i][iz,iy,ix] = c_sou[i][iz,iy,ix] * kwargs[:dtmod]^2 * model_ginsu["v"][jz,jy,jx]^2 / model_ginsu["b"][jz,jy,jx]
         end
     end
     blks_sou_scaled = WaveFD.source_blocking(nz_ginsu, ny_ginsu, nx_ginsu, kwargs[:nbz_inject], kwargs[:nby_inject], kwargs[:nbx_inject], iz_sou, iy_sou, ix_sou, c_sou_scaled)
