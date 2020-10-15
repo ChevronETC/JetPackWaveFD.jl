@@ -56,10 +56,10 @@ function JetProp2DAcoVTIDenQ_DEO2_FDTD(;
     local active_wavefields, modeltype
     if "v" ∈ active_modelset_keys && "b" ∉ active_modelset_keys && "ϵ" ∈ active_modelset_keys && "η" ∈ active_modelset_keys
         active_wavefields = ["pold","mold","pspace","mspace"]
-        modeltype = WaveFD.Prop2DAcoVTIDenQ_DEO2_FDTD_Model_VEA
+        modeltype = WaveFD.Prop2DAcoVTIDenQ_DEO2_FDTD_Model_VEA()
     elseif "v" ∈ active_modelset_keys && "b" ∉ active_modelset_keys && "ϵ" ∉ active_modelset_keys && "η" ∉ active_modelset_keys
         active_wavefields = ["pspace","mspace"]
-        modeltype = WaveFD.Prop2DAcoVTIDenQ_DEO2_FDTD_Model_V
+        modeltype = WaveFD.Prop2DAcoVTIDenQ_DEO2_FDTD_Model_V()
     else
         error("unsupported model-space")
     end
@@ -430,6 +430,8 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
     end
     model_ginsu["f"] .= kwargs[:f]
 
+    ginsu_interior_range = interior(kwargs[:ginsu])
+
     # we need to serialize "pold" for the data but, not (necessarily) for the linearization
     active_wavefields = "pold" ∈ kwargs[:active_wavefields] ? kwargs[:active_wavefields] : [kwargs[:active_wavefields]; "pold"]
 
@@ -447,12 +449,13 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
     end
     blks_sou = WaveFD.source_blocking(nz_ginsu, nx_ginsu, kwargs[:nbz_inject], kwargs[:nbx_inject], iz_sou, ix_sou, c_sou)
 
-    c_sou_scaled = deepcopy(c_sou)
+    c_sou_scaled = Array{Array{Float32,2},1}(undef, length(c_sou))
     for i = 1:length(c_sou_scaled)
+        c_sou_scaled[i] = similar(c_sou[i])
         for ix = 1:size(c_sou_scaled[i], 2), iz = 1:size(c_sou_scaled[i], 1)
             jz = iz_sou[i][iz]
             jx = ix_sou[i][ix]
-            c_sou_scaled[i][iz,ix] *= kwargs[:dtmod]^2 * model_ginsu["v"][jz,jx]^2 / model_ginsu["b"][jz,jx]
+            c_sou_scaled[i][iz,ix] = c_sou[i][iz,ix] * kwargs[:dtmod]^2 * model_ginsu["v"][jz,jx]^2 / model_ginsu["b"][jz,jx]
         end
     end
     blks_sou_scaled = WaveFD.source_blocking(nz_ginsu, nx_ginsu, kwargs[:nbz_inject], kwargs[:nbx_inject], iz_sou, ix_sou, c_sou_scaled)
@@ -517,8 +520,13 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
 
             if kwargs[:srcfieldfile] != ""
                 cumtime_io += @elapsed for active_wavefield in active_wavefields
-                    WaveFD.compressedwrite(iofield[active_wavefield], kwargs[:compressor][active_wavefield], div(it-1,itskip)+1,
-                        kwargs[:isinterior] ? interior(kwargs[:ginsu], wavefields[active_wavefield]) : wavefields[active_wavefield])
+                    if kwargs[:isinterior]
+                        WaveFD.compressedwrite(iofield[active_wavefield], kwargs[:compressor][active_wavefield], div(it-1,itskip)+1,
+                            wavefields[active_wavefield], ginsu_interior_range)
+                    else
+                        WaveFD.compressedwrite(iofield[active_wavefield], kwargs[:compressor][active_wavefield], div(it-1,itskip)+1,
+                            wavefields[active_wavefield])
+                    end
                 end
             end
         end
@@ -608,6 +616,8 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_df!(δd::AbstractArray, δm::AbstractArra
         δm_ginsu[prop] = sub(kwargs[:ginsu], @view(δm[:,:,kwargs[:active_modelset][prop]]), extend=false)
     end
 
+    ginsu_interior_range = interior(kwargs[:ginsu])
+
     # pre-compute receiver interpolation coefficients
     local iz,ix,c
     if kwargs[:interpmethod] == :hicks
@@ -656,8 +666,13 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_df!(δd::AbstractArray, δm::AbstractArra
         if rem(it-1,itskip) == 0
             # read source field from disk
             cumtime_io += @elapsed for active_wavefield in kwargs[:active_wavefields]
-                WaveFD.compressedread!(iofields[active_wavefield], kwargs[:compressor][active_wavefield], div(it-1,itskip)+1,
-                    kwargs[:isinterior] ? interior(kwargs[:ginsu], wavefields[active_wavefield]) : wavefields[active_wavefield])
+                if kwargs[:isinterior]
+                    WaveFD.compressedread!(iofields[active_wavefield], kwargs[:compressor][active_wavefield], div(it-1,itskip)+1,
+                        wavefields[active_wavefield], ginsu_interior_range)
+                else
+                    WaveFD.compressedread!(iofields[active_wavefield], kwargs[:compressor][active_wavefield], div(it-1,itskip)+1,
+                        wavefields[active_wavefield])
+                end
             end
 
             # born injection
@@ -723,6 +738,8 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
         δm_ginsu[prop] = zeros(Float32, nz_ginsu, nx_ginsu)
     end
 
+    ginsu_interior_range = interior(kwargs[:ginsu])
+
     # Get receiver interpolation coefficients
     local iz, ix, c
     if kwargs[:interpmethod] == :hicks
@@ -783,8 +800,13 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
         if rem(it-1,itskip) == 0
             # read source field from disk
             cumtime_io += @elapsed for active_wavefield in kwargs[:active_wavefields]
-                WaveFD.compressedread!(iofields[active_wavefield], kwargs[:compressor][active_wavefield], div(it-1,itskip)+1,
-                    kwargs[:isinterior] ? interior(kwargs[:ginsu], wavefields[active_wavefield]) : wavefields[active_wavefield])
+                if kwargs[:isinterior]
+                    WaveFD.compressedread!(iofields[active_wavefield], kwargs[:compressor][active_wavefield], div(it-1,itskip)+1,
+                        wavefields[active_wavefield], ginsu_interior_range)
+                else
+                    WaveFD.compressedread!(iofields[active_wavefield], kwargs[:compressor][active_wavefield], div(it-1,itskip)+1,
+                        wavefields[active_wavefield])
+                end
             end
 
             # born accumulation
@@ -834,10 +856,10 @@ end
 
 Jets.perfstat(J::T) where {D,R,T<:Jet{D,R,typeof(JopProp2DAcoVTIDenQ_DEO2_FDTD_f!)}} = state(J).stats
 
-@inline function JopProp2DAcoVTIDenQ_DEO2_FDTD_write_history_ln(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_ex, cumtime_im, pcur, d, mode)
+@inline function JopProp2DAcoVTIDenQ_DEO2_FDTD_write_history_ln(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_ex, cumtime_im, pcur, d::AbstractArray{T}, mode) where {T}
     itd = occursin("adjoint", mode) ? ntmod-it+1 : it
     rmsp = sqrt(norm(pcur)^2 / length(pcur))
-    rmsd = d != nothing ? sqrt(norm(d)^2 / length(d)) : 0.0
+    rmsd = d != nothing ? sqrt(norm(d)^2 / length(d)) : zero(T)
     @info @sprintf("PropLn2DAcoVTIDenQ_DEO2_FDTD, %s, time step %5d of %5d ; %7.2f MCells/s (IO=%5.2f%%, EX=%5.2f%%, IM=%5.2f%%) -- rms d,p; %10.4e %10.4e", mode, itd, ntmod,
                     megacells_per_second(size(ginsu)..., itd-1, cumtime_total),
                     cumtime_total > 0 ? cumtime_io/cumtime_total*100.0 : 0.0,
@@ -845,9 +867,9 @@ Jets.perfstat(J::T) where {D,R,T<:Jet{D,R,typeof(JopProp2DAcoVTIDenQ_DEO2_FDTD_f
                     cumtime_total > 0 ? cumtime_im/cumtime_total*100.0 : 0.0, rmsd, rmsp)
 end
 
-@inline function JopProp2DAcoVTIDenQ_DEO2_FDTD_write_history_nl(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_ex, pcur, d)
+@inline function JopProp2DAcoVTIDenQ_DEO2_FDTD_write_history_nl(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_ex, pcur, d::AbstractArray{T}) where {T}
     rmsp = sqrt(norm(pcur)^2 / length(pcur))
-    rmsd = length(d) > 0 ? sqrt(norm(d)^2 / length(d)) : 0.0
+    rmsd = length(d) > 0 ? sqrt(norm(d)^2 / length(d)) : zero(T)
     @info @sprintf("Prop2DAcoVTIDenQ_DEO2_FDTD, nonlinear forward, time step %5d of %5d ; %7.2f MCells/s (IO=%5.2f%%, EX=%5.2f%%) -- rms d,p; %10.4e %10.4e", it, ntmod,
                     megacells_per_second(size(ginsu)..., it-1, cumtime_total),
                     cumtime_total > 0 ? cumtime_io/cumtime_total*100.0 : 0.0,
