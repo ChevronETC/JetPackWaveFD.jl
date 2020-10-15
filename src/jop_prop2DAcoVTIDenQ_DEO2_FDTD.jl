@@ -491,7 +491,7 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
 
     set_zero_subnormals(true)
     for it = 1:ntmod_wav
-        if kwargs[:reportinterval] != 0 && it > 0 && (it % kwargs[:reportinterval] == 0 || it == 1 || it == ntmod_wav)
+        if kwargs[:reportinterval] != 0 && (it % kwargs[:reportinterval] == 0 || it == ntmod_wav)
             JopProp2DAcoVTIDenQ_DEO2_FDTD_write_history_nl(kwargs[:ginsu], it, ntmod_wav, time()-time1, cumtime_io, cumtime_ex, wavefields["pcur"], d)
         end
 
@@ -644,7 +644,7 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_df!(δd::AbstractArray, δm::AbstractArra
 
     set_zero_subnormals(true)
     for it = 1:ntmod
-        if kwargs[:reportinterval] != 0 && (it % kwargs[:reportinterval] == 0 || it == 1 || it == ntmod)
+        if kwargs[:reportinterval] != 0 && (it % kwargs[:reportinterval] == 0 || it == ntmod)
             JopProp2DAcoVTIDenQ_DEO2_FDTD_write_history_ln(kwargs[:ginsu], it, ntmod, time()-time1, 
                 cumtime_io, cumtime_ex, cumtime_im, pcur, δdinterp, "forward")
         end
@@ -769,7 +769,7 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
 
     set_zero_subnormals(true)
     for it = ntmod:-1:1
-        if kwargs[:reportinterval] != 0 && (it % kwargs[:reportinterval] == 0 || it == 1 || it == ntmod)
+        if kwargs[:reportinterval] != 0 && (it % kwargs[:reportinterval] == 0 || it == ntmod)
             JopProp2DAcoVTIDenQ_DEO2_FDTD_write_history_ln(kwargs[:ginsu], it, ntmod, time()-time1, cumtime_io, cumtime_ex, cumtime_im, pcur, δdinterp, "adjoint")
         end
 
