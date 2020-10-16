@@ -329,6 +329,7 @@ function JopProp2DAcoIsoDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
     # ginsu'd earth model
     sub!(m_ginsu, kwargs[:ginsu], m, extend=true)
     sub!(b_ginsu, kwargs[:ginsu], kwargs[:b], extend=true)
+    ginsu_interior_range = interior(kwargs[:ginsu])
 
     it0, ntmod_wav = WaveFD.default_ntmod(kwargs[:dtrec], kwargs[:dtmod], kwargs[:st], kwargs[:ntrec])
 
@@ -365,19 +366,12 @@ function JopProp2DAcoIsoDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
     end
 
     # disk-file for source-field serialization
-    iofield = Dict()
+    iofield = Dict{String,IOStream}()
     if kwargs[:srcfieldfile] != ""
         for wavefield_active in ["P","DP"]
             filename = "$(kwargs[:srcfieldfile])-$(wavefield_active)"
-            try
-                if isfile(filename) == true
-                    rm(filename)
-                end
-                iofield[wavefield_active] = open(filename, "w")
-            catch
-                @info "Unable to open $(filename) on proc $(myid()) - $(gethostname())"
-                rethrow()
-            end
+            isfile(filename) && rm(filename)
+            iofield[wavefield_active] = open(filename, "w")
             open(kwargs[:compressor][wavefield_active])
         end
     end
@@ -385,7 +379,9 @@ function JopProp2DAcoIsoDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
     itskip = round(Int, kwargs[:dtrec]/kwargs[:dtmod])
     time1 = time()
     cumtime_io, cumtime_ex = 0.0, 0.0
-    kwargs[:reportinterval] == 0 || @info "nonlinear forward on $(gethostname()), srcfieldfile=$(kwargs[:srcfieldfile])"
+    # kwargs[:reportinterval] == 0 || @info "nonlinear forward on $(gethostname()), srcfieldfile=$(kwargs[:srcfieldfile])"
+    # @info "nonlinear forward on $(gethostname()), srcfieldfile=$(kwargs[:srcfieldfile])"
+    # @info "nonlinear forward"
 
     set_zero_subnormals(true)
     for it = 1:ntmod_wav
@@ -415,8 +411,8 @@ function JopProp2DAcoIsoDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
             if kwargs[:srcfieldfile] != ""
                 cumtime_io += @elapsed begin
                     if kwargs[:isinterior]
-                        WaveFD.compressedwrite(iofield["P"], kwargs[:compressor]["P"], div(it-1,itskip)+1, pold, interior(kwargs[:ginsu]))
-                        WaveFD.compressedwrite(iofield["DP"], kwargs[:compressor]["DP"], div(it-1,itskip)+1, pspace, interior(kwargs[:ginsu]))
+                        WaveFD.compressedwrite(iofield["P"], kwargs[:compressor]["P"], div(it-1,itskip)+1, pold, ginsu_interior_range)
+                        WaveFD.compressedwrite(iofield["DP"], kwargs[:compressor]["DP"], div(it-1,itskip)+1, pspace, ginsu_interior_range)
                     else
                         WaveFD.compressedwrite(iofield["P"], kwargs[:compressor]["P"], div(it-1,itskip)+1, pold)
                         WaveFD.compressedwrite(iofield["DP"], kwargs[:compressor]["DP"], div(it-1,itskip)+1, pspace)

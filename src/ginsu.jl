@@ -273,7 +273,7 @@ function interior(ginsu::Ginsu{N}) where {N}
             strt = state(AI).pad[i][1] - state(AE).pad[i][1] + 1
             stop = strt + length(state(AI).pad[i]) - 1
             strt:stop
-        end, N)::NTuple{N,UnitRange{Int}}
+        end, Val{N}())
 end
 
 Base.size(gn::Ginsu, i::Int; interior=false) = length(state(_op(gn; interior=interior)).pad[i])
