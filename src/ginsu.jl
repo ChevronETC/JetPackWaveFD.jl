@@ -256,14 +256,24 @@ Get a view of the Ginsu'd subset `mg` corresponding to its interior region which
 excludes the sponge.
 """
 function interior(ginsu::Ginsu{N}, prop_ginsu::AbstractArray{T,N}) where {T,N}
+    rng = interior(ginsu)
+    view(prop_ginsu, rng...)
+end
+
+"""
+    I = interior(ginsu)
+
+Get the index range corresponding to the interior region which excludes
+the sponge.
+"""
+function interior(ginsu::Ginsu{N}) where {N}
     AI = _op(ginsu, extend=false, interior=true)
     AE = _op(ginsu, extend=false, interior=false)
-    rng = ntuple(i->begin
+    ntuple(i->begin
             strt = state(AI).pad[i][1] - state(AE).pad[i][1] + 1
             stop = strt + length(state(AI).pad[i]) - 1
             strt:stop
         end, N)::NTuple{N,UnitRange{Int}}
-    view(prop_ginsu, rng...)
 end
 
 Base.size(gn::Ginsu, i::Int; interior=false) = length(state(_op(gn; interior=interior)).pad[i])
