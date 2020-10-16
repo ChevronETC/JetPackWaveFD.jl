@@ -379,9 +379,7 @@ function JopProp2DAcoIsoDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
     itskip = round(Int, kwargs[:dtrec]/kwargs[:dtmod])
     time1 = time()
     cumtime_io, cumtime_ex = 0.0, 0.0
-    # kwargs[:reportinterval] == 0 || @info "nonlinear forward on $(gethostname()), srcfieldfile=$(kwargs[:srcfieldfile])"
-    # @info "nonlinear forward on $(gethostname()), srcfieldfile=$(kwargs[:srcfieldfile])"
-    # @info "nonlinear forward"
+    kwargs[:reportinterval] == 0 || @info "nonlinear forward on $(gethostname()), srcfieldfile=$(kwargs[:srcfieldfile])"
 
     set_zero_subnormals(true)
     for it = 1:ntmod_wav
@@ -697,23 +695,28 @@ end
 Jets.perfstat(J::T) where {D,R,T<:Jet{D,R,typeof(JopProp2DAcoIsoDenQ_DEO2_FDTD_f!)}} = state(J).stats
 
 @inline function JopProp2DAcoIsoDenQ_DEO2_FDTD_write_history_ln(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_ex, cumtime_im, pcur, d::AbstractArray{T}, mode) where {T}
-    itd = occursin("adjoint", mode) ? ntmod-it+1 : it
+    kt = fmt("5d", occursin("adjoint", mode) ? ntmod-it+1 : it)
+    nt = fmt("5d", ntmod)
+    mcells = fmt("7.2f", megacells_per_second(size(ginsu)..., it-1, cumtime_total))
+    IO = fmt("5.2f", cumtime_total > 0 ? cumtime_io/cumtime_total*100.0 : 0.0)
+    EX = fmt("5.2f", cumtime_total > 0 ? cumtime_ex/cumtime_total*100.0 : 0.0)
+    IM = fmt("5.2f", cumtime_total > 0 ? cumtime_im/cumtime_total*100.0 : 0.0)
     rmsp = sqrt(norm(pcur)^2 / length(pcur))
     rmsd = d != nothing ? sqrt(norm(d)^2 / length(d)) : zero(T)
-    @info @sprintf("PropLn2DAcoIsoDenQ_DEO2_FDTD, %s, time step %5d of %5d ; %7.2f MCells/s (IO=%5.2f%%, EX=%5.2f%%, IM=%5.2f%%) -- rms d,p; %10.4e %10.4e", mode, itd, ntmod,
-                    megacells_per_second(size(ginsu)..., itd-1, cumtime_total),
-                    cumtime_total > 0 ? cumtime_io/cumtime_total*100.0 : 0.0,
-                    cumtime_total > 0 ? cumtime_ex/cumtime_total*100.0 : 0.0,
-                    cumtime_total > 0 ? cumtime_im/cumtime_total*100.0 : 0.0, rmsd, rmsp)
+
+    @info "Prop2DAcoIsoDenQ_DEO2_FDTD, $mode, time step $kt of $nt $mcells MCells/s (IO=$IO, EX=$EX, IM=$IM) -- rms d,p; $rmsd $rmsp"
 end
 
 @inline function JopProp2DAcoIsoDenQ_DEO2_FDTD_write_history_nl(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_ex, pcur, d::AbstractArray{T}) where {T}
-    rmsp = sqrt(norm(pcur)^2 / length(pcur))
-    rmsd = length(d) > 0 ? sqrt(norm(d)^2 / length(d)) : zero(T)
-    @info @sprintf("Prop2DAcoIsoDenQ_DEO2_FDTD, nonlinear forward, time step %5d of %5d ; %7.2f MCells/s (IO=%5.2f%%, EX=%5.2f%%) -- rms d,p; %10.4e %10.4e", it, ntmod,
-                    megacells_per_second(size(ginsu)..., it-1, cumtime_total),
-                    cumtime_total > 0 ? cumtime_io/cumtime_total*100.0 : 0.0,
-                    cumtime_total > 0 ? cumtime_ex/cumtime_total*100.0 : 0.0, rmsd, rmsp)
+    kt = fmt("5d", it)
+    nt = fmt("5d", ntmod)
+    mcells = fmt("7.2f", megacells_per_second(size(ginsu)..., it-1, cumtime_total))
+    IO = fmt("5.2f", cumtime_total > 0 ? cumtime_io/cumtime_total*100.0 : 0.0)
+    EX = fmt("5.2f", cumtime_total > 0 ? cumtime_ex/cumtime_total*100.0 : 0.0)
+    rmsd = fmt("10.4e", length(d) > 0 ? sqrt(norm(d)^2 / length(d)) : zero(T))
+    rmsp = fmt("10.4e", sqrt(norm(pcur)^2 / length(pcur)))
+
+    @info "Prop2DAcoIsoDenQ_DEO2_FDTD, nonlinear forward, time step $kt of $nt $mcells MCells/s (IO=$IO, EX=$EX) -- rms d,p; $rmsd $rmsp"
 end
 
 function Base.close(jet::Jet{D,R,typeof(JopProp2DAcoIsoDenQ_DEO2_FDTD_f!)}) where {D,R}
