@@ -672,7 +672,7 @@ function JopProp3DAcoVTIDenQ_DEO2_FDTD_df!(δd::AbstractArray, δm::AbstractArra
     δdinterp = zeros(Float32, ntmod, size(δd, 2))
 
     itskip = round(Int, kwargs[:dtrec]/kwargs[:dtmod])
-    kwargs[:reportinterval] == 0 || @info "linear forward on $(gethostname()), srcfieldfile=$(kwargs[:srcfieldfile][])"
+    kwargs[:reportinterval] == 0 || @info "linear forward on $(gethostname()), srcfieldfile=$(kwargs[:srcfieldfile])"
     time1 = time()
     cumtime_io, cumtime_ex, cumtime_im = 0.0, 0.0, 0.0
 
