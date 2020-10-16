@@ -864,7 +864,7 @@ Jets.perfstat(J::T) where {D,R,T<:Jet{D,R,typeof(JopProp2DAcoVTIDenQ_DEO2_FDTD_f
     EX = fmt("5.2f", cumtime_total > 0 ? cumtime_ex/cumtime_total*100.0 : 0.0)
     IM = fmt("5.2f", cumtime_total > 0 ? cumtime_im/cumtime_total*100.0 : 0.0)
     rmsd = fmt("10.4e", length(d) > 0 ? sqrt(norm(d)^2 / length(d)) : zero(T))
-    rmsp = fmt("10.4e", sqrt(norm(pcur)^2 / length(pcur))
+    rmsp = fmt("10.4e", sqrt(norm(pcur)^2 / length(pcur)))
 
     @info "Prop2DAcoVTIDenQ_DEO2_FDTD, $mode, time step $kt of $nt $mcells MCells/s (IO=$IO, EX=$EX, IM=$IM) -- rms d,p; $rmsd $rmsp"
 end
