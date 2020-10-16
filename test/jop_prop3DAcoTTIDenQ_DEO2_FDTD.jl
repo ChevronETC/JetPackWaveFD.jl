@@ -189,7 +189,7 @@ end
                 end
             end
             u_ana[:,iz,iy,ix] = irfft(U,nt_pad)[1:nt]
-            printfmt("{.2f}\r", ((ix-1)*ny*nz+(iy-1)*nz+iz-1)/(nz*ny*nx)*100))
+            printfmt("{:.2f}\r", ((ix-1)*ny*nz+(iy-1)*nz+iz-1)/(nz*ny*nx)*100))
         end
         u_ana
     end
