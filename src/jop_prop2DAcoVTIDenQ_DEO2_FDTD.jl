@@ -738,7 +738,7 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
         δm_ginsu[prop] = zeros(Float32, nz_ginsu, nx_ginsu)
     end
 
-    ginsu_interior_range = interior(kwargs[:ginsu_interior_range])
+    ginsu_interior_range = interior(kwargs[:ginsu])
 
     # Get receiver interpolation coefficients
     local iz, ix, c
@@ -800,7 +800,7 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
         if rem(it-1,itskip) == 0
             # read source field from disk
             cumtime_io += @elapsed for active_wavefield in kwargs[:active_wavefields]
-                if kwargs[:interior]
+                if kwargs[:isinterior]
                     WaveFD.compressedread!(iofields[active_wavefield], kwargs[:compressor][active_wavefield], div(it-1,itskip)+1,
                         wavefields[active_wavefield], ginsu_interior_range)
                 else

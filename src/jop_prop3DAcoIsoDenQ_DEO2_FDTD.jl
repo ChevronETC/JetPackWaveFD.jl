@@ -687,9 +687,9 @@ function JopProp3DAcoIsoDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
         if rem(it-1,itskip) == 0
             # read source field from disk
             cumtime_io += @elapsed if kwargs[:isinterior]
-                WaveFD.compressedread!(iofield, kwargs[:compressor]["DP"], DP, ginsu_interior_range)
+                WaveFD.compressedread!(iofield, kwargs[:compressor]["DP"], div(it-1,itskip)+1, DP, ginsu_interior_range)
             else 
-                WaveFD.compressedread!(iofield, kwargs[:compressor]["DP"], DP)
+                WaveFD.compressedread!(iofield, kwargs[:compressor]["DP"], div(it-1,itskip)+1, DP)
             end
 
             # born accumulation
