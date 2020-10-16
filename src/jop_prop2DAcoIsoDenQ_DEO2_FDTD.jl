@@ -379,7 +379,9 @@ function JopProp2DAcoIsoDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
     itskip = round(Int, kwargs[:dtrec]/kwargs[:dtmod])
     time1 = time()
     cumtime_io, cumtime_ex = 0.0, 0.0
-    kwargs[:reportinterval] == 0 || @info "nonlinear forward on $(gethostname()), srcfieldfile=$(kwargs[:srcfieldfile])"
+    # kwargs[:reportinterval] == 0 || @info "nonlinear forward on $(gethostname()), srcfieldfile=$(kwargs[:srcfieldfile])"
+    # @info "nonlinear forward on $(gethostname()), srcfieldfile=$(kwargs[:srcfieldfile])"
+    # @info "nonlinear forward"
 
     set_zero_subnormals(true)
     for it = 1:ntmod_wav
