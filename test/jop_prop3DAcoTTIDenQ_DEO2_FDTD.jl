@@ -1,4 +1,4 @@
-using FFTW, JetPackWaveFD, Jets, LinearAlgebra, Printf, Random, SpecialFunctions, Statistics, Test, WaveFD
+using Formatting, FFTW, JetPackWaveFD, Jets, LinearAlgebra, Random, SpecialFunctions, Statistics, Test, WaveFD
 
 function make_op(modeltype, interpmethod, fs; v₀=1500, ϵ₀=0.2, η₀=0.4, comptype = Float32)
     nsponge = 10
@@ -189,7 +189,7 @@ end
                 end
             end
             u_ana[:,iz,iy,ix] = irfft(U,nt_pad)[1:nt]
-            write(stdout, @sprintf("%.2f\r", ((ix-1)*ny*nz+(iy-1)*nz+iz-1)/(nz*ny*nx)*100))
+            printfmt("{.2f}\r", ((ix-1)*ny*nz+(iy-1)*nz+iz-1)/(nz*ny*nx)*100))
         end
         u_ana
     end

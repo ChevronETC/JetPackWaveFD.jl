@@ -1,4 +1,4 @@
-using Printf, Statistics
+using Formatting, Statistics
 
 function export_markdown_mcells(filename, results)
     nthreads = results.benchmarkgroup["2DAcoIsoDenQ_DEO2_FDTD, no IO, forward"].tags[1]["nthreads"]
@@ -42,8 +42,8 @@ function export_markdown_mcells(filename, results)
     for (irow,row) in enumerate(rows)
         write(io, "| $row")
         for icol = 1:length(columns)
-            _μ = @sprintf("%.2f", μ[irow,icol])
-            _σ = @sprintf("%.2f", 100* (σ[irow,icol] / μ[irow,icol]))
+            _μ = fmt(".2f", μ[irow,icol])
+            _σ = fmt(".2f", 100* (σ[irow,icol] / μ[irow,icol]))
             write(io, " | $_μ MC/s ($_σ %)")
         end
         write(io, "|\n")
