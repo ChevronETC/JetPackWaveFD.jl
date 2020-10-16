@@ -438,6 +438,7 @@ function JopProp2DAcoTTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
         sub!(model_ginsu[prop], kwargs[:ginsu], kwargs[:passive_modelset][prop], extend=true)
     end
     model_ginsu["f"] .= kwargs[:f]
+    ginsu_interior_range = interior(kwargs[:ginsu])
 
     # we need to serialize "pold" for the data but, not (necessarily) for the linearization
     active_wavefields = "pold" ∈ kwargs[:active_wavefields] ? kwargs[:active_wavefields] : [kwargs[:active_wavefields]; "pold"]
@@ -481,15 +482,10 @@ function JopProp2DAcoTTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
     if kwargs[:srcfieldfile] != ""
         for active_wavefield in active_wavefields
             filename = "$(kwargs[:srcfieldfile])-$(active_wavefield)"
-            try
-                if isfile(filename) == true
-                    rm(filename)
-                end
-                iofield[active_wavefield] = open(filename, "w")
-            catch
-                @info "Unable to open $(filename) on proc $(myid()) - $(gethostname())"
-                rethrow()
+            if isfile(filename) == true
+                rm(filename)
             end
+            iofield[active_wavefield] = open(filename, "w")
             open(kwargs[:compressor][active_wavefield])
         end
     end
@@ -527,8 +523,11 @@ function JopProp2DAcoTTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
 
             if kwargs[:srcfieldfile] != ""
                 cumtime_io += @elapsed for active_wavefield in active_wavefields
-                    WaveFD.compressedwrite(iofield[active_wavefield],  kwargs[:compressor][active_wavefield], div(it-1,itskip)+1,
-                        kwargs[:isinterior] ? interior(kwargs[:ginsu], wavefields[active_wavefield]) : wavefields[active_wavefield])
+                    if kwargs[:isinterior]
+                        WaveFD.compressedwrite(iofield[active_wavefield],  kwargs[:compressor][active_wavefield], div(it-1,itskip)+1, wavefields[active_wavefield], ginsu_interior_range)
+                    else
+                        WaveFD.compressedwrite(iofield[active_wavefield],  kwargs[:compressor][active_wavefield], div(it-1,itskip)+1, wavefields[active_wavefield])
+                    end
                 end
             end
         end
@@ -619,6 +618,8 @@ function JopProp2DAcoTTIDenQ_DEO2_FDTD_df!(δd::AbstractArray, δm::AbstractArra
         δm_ginsu[prop] = sub(kwargs[:ginsu], @view(δm[:,:,kwargs[:active_modelset][prop]]), extend=false)
     end
 
+    ginsu_interior_range = interior(kwargs[:ginsu])
+
     # pre-compute receiver interpolation coefficients
     local iz,ix,c
     if kwargs[:interpmethod] == :hicks
@@ -667,8 +668,11 @@ function JopProp2DAcoTTIDenQ_DEO2_FDTD_df!(δd::AbstractArray, δm::AbstractArra
         if rem(it-1,itskip) == 0
             # read source field from disk
             cumtime_io += @elapsed for active_wavefield in kwargs[:active_wavefields]
-                WaveFD.compressedread!(iofields[active_wavefield], kwargs[:compressor][active_wavefield], div(it-1,itskip)+1,
-                    kwargs[:isinterior] ? interior(kwargs[:ginsu], wavefields[active_wavefield]) : wavefields[active_wavefield])
+                if kwargs[:isinterior]
+                    WaveFD.compressedread!(iofields[active_wavefield], kwargs[:compressor][active_wavefield], div(it-1,itskip)+1, wavefields[active_wavefield], ginsu_interior_range)
+                else
+                    WaveFD.compressedread!(iofields[active_wavefield], kwargs[:compressor][active_wavefield], div(it-1,itskip)+1, wavefields[active_wavefield])
+                end
             end
 
             # born injection
@@ -735,6 +739,8 @@ function JopProp2DAcoTTIDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
         δm_ginsu[prop] = zeros(Float32, nz_ginsu, nx_ginsu)
     end
 
+    ginsu_interior_range = interior(kwargs[:ginsu])
+
     # Get receiver interpolation coefficients
     local iz,ix,c
     if kwargs[:interpmethod] == :hicks
@@ -795,8 +801,11 @@ function JopProp2DAcoTTIDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
         if rem(it-1,itskip) == 0
             # read source field from disk
             cumtime_io += @elapsed for active_wavefield in kwargs[:active_wavefields]
-                WaveFD.compressedread!(iofields[active_wavefield], kwargs[:compressor][active_wavefield], div(it-1,itskip)+1,
-                    kwargs[:isinterior] ? interior(kwargs[:ginsu], wavefields[active_wavefield]) : wavefields[active_wavefield])
+                if kwargs[:isinterior]
+                    WaveFD.compressedread!(iofields[active_wavefield], kwargs[:compressor][active_wavefield], div(it-1,itskip)+1, wavefields[active_wavefield], ginsu_interior_range)
+                else
+                    WaveFD.compressedread!(iofields[active_wavefield], kwargs[:compressor][active_wavefield], div(it-1,itskip)+1, wavefields[active_wavefield])
+                end
             end
 
             # born accumulation
