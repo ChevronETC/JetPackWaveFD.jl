@@ -694,10 +694,10 @@ end
 
 Jets.perfstat(J::T) where {D,R,T<:Jet{D,R,typeof(JopProp2DAcoIsoDenQ_DEO2_FDTD_f!)}} = state(J).stats
 
-@inline function JopProp2DAcoIsoDenQ_DEO2_FDTD_write_history_ln(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_ex, cumtime_im, pcur, d, mode)
+@inline function JopProp2DAcoIsoDenQ_DEO2_FDTD_write_history_ln(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_ex, cumtime_im, pcur, d::AbstractArray{T}, mode) where {T}
     itd = occursin("adjoint", mode) ? ntmod-it+1 : it
     rmsp = sqrt(norm(pcur)^2 / length(pcur))
-    rmsd = d != nothing ? sqrt(norm(d)^2 / length(d)) : 0.0
+    rmsd = d != nothing ? sqrt(norm(d)^2 / length(d)) : zero(T)
     @info @sprintf("PropLn2DAcoIsoDenQ_DEO2_FDTD, %s, time step %5d of %5d ; %7.2f MCells/s (IO=%5.2f%%, EX=%5.2f%%, IM=%5.2f%%) -- rms d,p; %10.4e %10.4e", mode, itd, ntmod,
                     megacells_per_second(size(ginsu)..., itd-1, cumtime_total),
                     cumtime_total > 0 ? cumtime_io/cumtime_total*100.0 : 0.0,
@@ -705,9 +705,9 @@ Jets.perfstat(J::T) where {D,R,T<:Jet{D,R,typeof(JopProp2DAcoIsoDenQ_DEO2_FDTD_f
                     cumtime_total > 0 ? cumtime_im/cumtime_total*100.0 : 0.0, rmsd, rmsp)
 end
 
-@inline function JopProp2DAcoIsoDenQ_DEO2_FDTD_write_history_nl(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_ex, pcur, d)
+@inline function JopProp2DAcoIsoDenQ_DEO2_FDTD_write_history_nl(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_ex, pcur, d::AbstractArray{T}) where {T}
     rmsp = sqrt(norm(pcur)^2 / length(pcur))
-    rmsd = length(d) > 0 ? sqrt(norm(d)^2 / length(d)) : 0.0
+    rmsd = length(d) > 0 ? sqrt(norm(d)^2 / length(d)) : zero(T)
     @info @sprintf("Prop2DAcoIsoDenQ_DEO2_FDTD, nonlinear forward, time step %5d of %5d ; %7.2f MCells/s (IO=%5.2f%%, EX=%5.2f%%) -- rms d,p; %10.4e %10.4e", it, ntmod,
                     megacells_per_second(size(ginsu)..., it-1, cumtime_total),
                     cumtime_total > 0 ? cumtime_io/cumtime_total*100.0 : 0.0,
