@@ -14,9 +14,9 @@ Note that we are in the process of open sourcing the description of our attenuat
 These propagators are *self-adjoint*, meaning the same equations used for the nonlinear forward operations are also used for the linearized Jacobian forward and linearized Jacobian adjoint operations. 
 
 ## Source aperture considerations
-This package includes a set of operations `Ginsu` that help in easily handling field seismic experiments. For typical narrow azimuth towed streamer marine field experiments the aperure required for a single source location may be *much* smaller than the entire model. 
+This package includes a set of operations `Ginsu` that help in easily handling field seismic experiments. For typical narrow azimuth towed streamer marine field experiments the aperture required for a single source location may be *much* smaller than the entire model. 
 
-`Ginsu` provides methods to easily cut out part of the model that will be the correct size for the modeling aperture associated with individual sources and associated receiver arrays. There are forward methods (`sub` and `sub!`) provided to extract a piece of a large model for use with individual shots. Similarly there are adjoint methods (`super` and `super!`) provided to add the contributions from individuals sources back to a larger model, for example when summing model perturbation contributions over sources for reverse time migration or full waveform inversion. 
+`Ginsu` provides methods to easily cut out part of the model that will be the correct size for the modeling aperture associated with individual source and receiver arrays. There are forward methods (`sub` and `sub!`) provided to extract a piece of a large model for use with individual shots. Similarly there are adjoint methods (`super` and `super!`) provided to add the contributions from individuals sources back to a larger model, for example when summing model perturbation contributions over sources for reverse time migration or full waveform inversion. 
 
 These `Ginsu` mechanisms are part of the operation of the `JetPackWaveFD` propagators. 
 
@@ -34,8 +34,7 @@ We use the package `CvxCompress.jl`, which is built on the C++ library `CvxCompr
 
 ## See Also
 * `WaveFD` single time step modeling implementations wrapping high performance C++ kernels.
-* `Source Wavelets` section in the `WaveFD` documentation, discussing a selection of
-wavelets commonly used in seismic modeling.
+* `Source Wavelets` section in the `WaveFD` documentation, discussing a selection of wavelets commonly used in seismic modeling.
 * `JetPackWaveDevito` package, implementing these same 6 operators using the Devito domain specific language (https://www.devitoproject.org/).
 
 ## References
