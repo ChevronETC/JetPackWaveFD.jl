@@ -59,10 +59,10 @@ function JetProp2DAcoTTIDenQ_DEO2_FDTD(;
     local active_wavefields, modeltype
     if "v" ∈ active_modelset_keys && "b" ∉ active_modelset_keys && "ϵ" ∈ active_modelset_keys && "η" ∈ active_modelset_keys
         active_wavefields = ["pold","mold","pspace","mspace"]
-        modeltype = WaveFD.Prop2DAcoTTIDenQ_DEO2_FDTD_Model_VEA
+        modeltype = WaveFD.Prop2DAcoTTIDenQ_DEO2_FDTD_Model_VEA()
     elseif "v" ∈ active_modelset_keys && "b" ∉ active_modelset_keys && "ϵ" ∉ active_modelset_keys && "η" ∉ active_modelset_keys
         active_wavefields = ["pspace","mspace"]
-        modeltype = WaveFD.Prop2DAcoTTIDenQ_DEO2_FDTD_Model_V
+        modeltype = WaveFD.Prop2DAcoTTIDenQ_DEO2_FDTD_Model_V()
     else
         error("unsupported model-space")
     end
