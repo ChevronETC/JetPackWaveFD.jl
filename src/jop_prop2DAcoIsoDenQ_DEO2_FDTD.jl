@@ -696,7 +696,7 @@ Jets.perfstat(J::T) where {D,R,T<:Jet{D,R,typeof(JopProp2DAcoIsoDenQ_DEO2_FDTD_f
 
 @inline function JopProp2DAcoIsoDenQ_DEO2_FDTD_write_history_ln(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_ex, cumtime_im, pcur, d::AbstractArray{T}, mode) where {T}
     jt = occursin("adjoint", mode) ? ntmod-it+1 : it
-    kt = fmt("5d", occursin("adjoint", mode) ? jt)
+    kt = fmt("5d", jt)
     nt = fmt("5d", ntmod)
     mcells = fmt("7.2f", megacells_per_second(size(ginsu)..., jt-1, cumtime_total))
     IO = fmt("5.2f", cumtime_total > 0 ? cumtime_io/cumtime_total*100.0 : 0.0)
