@@ -892,9 +892,10 @@ end
 Jets.perfstat(J::T) where {D,R,T<:Jet{D,R,typeof(JopProp3DAcoVTIDenQ_DEO2_FDTD_f!)}} = state(J).stats
 
 @inline function JopProp3DAcoVTIDenQ_DEO2_FDTD_write_history_ln(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_ex, cumtime_im, pcur, d::AbstractArray{T}, mode) where {T}
-    kt = fmt("5d", occursin("adjoint", mode) ? ntmod-it+1 : it)
+    jt = occursin("adjoint", mode) ? ntmod-it+1 : it
+    kt = fmt("5d", jt)
     nt = fmt("5d", ntmod)
-    mcells = fmt("7.2f", megacells_per_second(size(ginsu)..., it-1, cumtime_total))
+    mcells = fmt("7.2f", megacells_per_second(size(ginsu)..., jt-1, cumtime_total))
     IO = fmt("5.2f", cumtime_total > 0 ? cumtime_io/cumtime_total*100.0 : 0.0)
     EX = fmt("5.2f", cumtime_total > 0 ? cumtime_ex/cumtime_total*100.0 : 0.0)
     IM = fmt("5.2f", cumtime_total > 0 ? cumtime_im/cumtime_total*100.0 : 0.0)
