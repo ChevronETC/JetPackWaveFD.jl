@@ -358,6 +358,8 @@ function JopProp3DAcoIsoDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
     sub!(m_ginsu, kwargs[:ginsu], m, extend=true)
     sub!(b_ginsu, kwargs[:ginsu], kwargs[:b], extend=true)
 
+    ginsu_interior_range = interior(kwargs[:ginsu])
+
     it0, ntmod_wav = WaveFD.default_ntmod(kwargs[:dtrec], kwargs[:dtmod], kwargs[:st], kwargs[:ntrec])
 
     # source wavelet for injection, one for each source location
@@ -372,13 +374,14 @@ function JopProp3DAcoIsoDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
     end
     blks_sou = WaveFD.source_blocking(nz_ginsu, ny_ginsu, nx_ginsu, kwargs[:nbz_inject], kwargs[:nby_inject], kwargs[:nbx_inject], iz_sou, iy_sou, ix_sou, c_sou)
 
-    c_sou_scaled = deepcopy(c_sou)
+    c_sou_scaled = Array{Array{Float32,3},1}(undef, length(c_sou))
     for i = 1:length(c_sou_scaled)
+        c_sou_scaled[i] = similar(c_sou[i])
         for ix = 1:size(c_sou_scaled[i], 3), iy = 1:size(c_sou_scaled[i], 2), iz = 1:size(c_sou_scaled[i], 1)
             jz = iz_sou[i][iz]
             jy = iy_sou[i][iy]
             jx = ix_sou[i][ix]
-            c_sou_scaled[i][iz,iy,ix] *= kwargs[:dtmod]^2 * m_ginsu[jz,jy,jx]^2 / b_ginsu[jz,jy,jx]
+            c_sou_scaled[i][iz,iy,ix] = c_sou[i][iz,iy,ix] * kwargs[:dtmod]^2 * m_ginsu[jz,jy,jx]^2 / b_ginsu[jz,jy,jx]
         end
     end
     blks_sou_scaled = WaveFD.source_blocking(nz_ginsu, ny_ginsu, nx_ginsu, kwargs[:nbz_inject], kwargs[:nby_inject], kwargs[:nbx_inject], iz_sou, iy_sou, ix_sou, c_sou_scaled)
@@ -397,15 +400,10 @@ function JopProp3DAcoIsoDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
     if kwargs[:srcfieldfile] != ""
         for wavefield_active in ["P","DP"]
             filename = "$(kwargs[:srcfieldfile])-$(wavefield_active)"
-            try
-                if isfile(filename) == true
-                    rm(filename)
-                end
-                iofield[wavefield_active] = open(filename, "w")
-            catch
-                @info "Unable to open $(filename) on proc $(myid()) - $(gethostname())"
-                rethrow()
+            if isfile(filename) == true
+                rm(filename)
             end
+            iofield[wavefield_active] = open(filename, "w")
             open(kwargs[:compressor][wavefield_active])
         end
     end
@@ -441,11 +439,12 @@ function JopProp3DAcoIsoDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
             WaveFD.scale_spatial_derivatives!(p)
 
             if kwargs[:srcfieldfile] != ""
-                cumtime_io += @elapsed begin
-                    WaveFD.compressedwrite(iofield["P"], kwargs[:compressor]["P"],  div(it-1,itskip)+1,
-                        kwargs[:isinterior] ? interior(kwargs[:ginsu], pold) : pold)
-                    WaveFD.compressedwrite(iofield["DP"], kwargs[:compressor]["DP"], div(it-1,itskip)+1,
-                        kwargs[:isinterior] ? interior(kwargs[:ginsu], pspace) : pspace)
+                cumtime_io += @elapsed if kwargs[:isinterior]
+                    WaveFD.compressedwrite(iofield["P"], kwargs[:compressor]["P"],  div(it-1,itskip)+1, pold, ginsu_interior_range)
+                    WaveFD.compressedwrite(iofield["DP"], kwargs[:compressor]["DP"], div(it-1,itskip)+1, pspace, ginsu_interior_range)
+                else
+                    WaveFD.compressedwrite(iofield["P"], kwargs[:compressor]["P"],  div(it-1,itskip)+1, pold)
+                    WaveFD.compressedwrite(iofield["DP"], kwargs[:compressor]["DP"], div(it-1,itskip)+1, pspace)
                 end
             end
         end
@@ -528,6 +527,8 @@ function JopProp3DAcoIsoDenQ_DEO2_FDTD_df!(δd::AbstractArray, δm::AbstractArra
 
     δm_ginsu = sub(kwargs[:ginsu], δm, extend=false)
 
+    ginsu_interior_range = interior(kwargs[:ginsu])
+
     # pre-compute receiver interpolation coefficients
     local iz, iy, ix, c
     if kwargs[:interpmethod] == :hicks
@@ -570,9 +571,11 @@ function JopProp3DAcoIsoDenQ_DEO2_FDTD_df!(δd::AbstractArray, δm::AbstractArra
 
         if rem(it-1,itskip) == 0
             # read source field from disk
-			cumtime_io += @elapsed WaveFD.compressedread!(iofield, kwargs[:compressor]["DP"], div(it-1,itskip)+1,
-                kwargs[:isinterior] ? interior(kwargs[:ginsu], DP) : DP)
-
+            cumtime_io += @elapsed if kwargs[:isinterior]
+                WaveFD.compressedread!(iofield, kwargs[:compressor]["DP"], div(it-1,itskip)+1, DP, ginsu_interior_range)
+            else
+                WaveFD.compressedread!(iofield, kwargs[:compressor]["DP"], div(it-1,itskip)+1, DP)
+            end
             # born injection
             cumtime_im += @elapsed WaveFD.forwardBornInjection!(p, δm_ginsu, DP)
         end
@@ -624,6 +627,8 @@ function JopProp3DAcoIsoDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
     sub!(b_ginsu, kwargs[:ginsu], kwargs[:b], extend=true)
 
     δm_ginsu = zeros(Float32, nz_ginsu, ny_ginsu, nx_ginsu)
+
+    ginsu_interior_range = interior(kwargs[:ginsu])
 
     # Get receiver interpolation coefficients
     local iz, iy, ix, c
@@ -681,8 +686,11 @@ function JopProp3DAcoIsoDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
 
         if rem(it-1,itskip) == 0
             # read source field from disk
-            cumtime_io += @elapsed WaveFD.compressedread!(iofield, kwargs[:compressor]["DP"], 
-                div(it-1,itskip)+1, kwargs[:isinterior] ? interior(kwargs[:ginsu], DP) : DP)
+            cumtime_io += @elapsed if kwargs[:isinterior]
+                WaveFD.compressedread!(iofield, kwargs[:compressor]["DP"], div(it-1,itskip)+1, DP, ginsu_interior_range)
+            else 
+                WaveFD.compressedread!(iofield, kwargs[:compressor]["DP"], div(it-1,itskip)+1, DP)
+            end
 
             # born accumulation
             cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, δm_ginsu, DP)
@@ -725,10 +733,10 @@ end
 
 Jets.perfstat(J::T) where {D,R,T<:Jet{D,R,typeof(JopProp3DAcoIsoDenQ_DEO2_FDTD_f!)}} = state(J).stats
 
-@inline function JopProp3DAcoIsoDenQ_DEO2_FDTD_write_history_ln(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_ex, cumtime_im, pcur, d, mode)
+@inline function JopProp3DAcoIsoDenQ_DEO2_FDTD_write_history_ln(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_ex, cumtime_im, pcur, d::AbstractArray{T}, mode) where {T}
     itd = occursin("adjoint", mode) ? ntmod-it+1 : it
     rmsp = sqrt(norm(pcur)^2 / length(pcur))
-    rmsd = d != nothing ? sqrt(norm(d)^2 / length(d)) : 0.0
+    rmsd = d != nothing ? sqrt(norm(d)^2 / length(d)) : zero(T)
     @info @sprintf("PropLn3DAcoIsoDenQ_DEO2_FDTD, %s, time step %5d of %5d ; %7.2f MCells/s (IO=%5.2f%%, EX=%5.2f%%, IM=%5.2f%%) -- rms d,p; %10.4e %10.4e", mode, itd, ntmod,
                     megacells_per_second(size(ginsu)..., itd-1, cumtime_total),
                     cumtime_total > 0 ? cumtime_io/cumtime_total*100.0 : 0.0,
@@ -736,9 +744,9 @@ Jets.perfstat(J::T) where {D,R,T<:Jet{D,R,typeof(JopProp3DAcoIsoDenQ_DEO2_FDTD_f
                     cumtime_total > 0 ? cumtime_im/cumtime_total*100.0 : 0.0, rmsd, rmsp)
 end
 
-@inline function JopProp3DAcoIsoDenQ_DEO2_FDTD_write_history_nl(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_ex, pcur, d)
+@inline function JopProp3DAcoIsoDenQ_DEO2_FDTD_write_history_nl(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_ex, pcur, d::AbstractArray{T}) where {T}
     rmsp = sqrt(norm(pcur)^2 / length(pcur))
-    rmsd = length(d) > 0 ? sqrt(norm(d)^2 / length(d)) : 0.0
+    rmsd = length(d) > 0 ? sqrt(norm(d)^2 / length(d)) : zero(T)
     @info @sprintf("Prop3DAcoIsoDenQ_DEO2_FDTD, nonlinear forward, time step %5d of %5d ; %7.2f MCells/s (IO=%5.2f%%, EX=%5.2f%%) -- rms d,p; %10.4e %10.4e", it, ntmod,
                     megacells_per_second(size(ginsu)..., it-1, cumtime_total),
                     cumtime_total > 0 ? cumtime_io/cumtime_total*100.0 : 0.0,
