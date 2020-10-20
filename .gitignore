@@ -1,5 +1,6 @@
 *.ipynb_checkpoints
 *.swp
 docs/build
+*png
 results.md
 tune.json

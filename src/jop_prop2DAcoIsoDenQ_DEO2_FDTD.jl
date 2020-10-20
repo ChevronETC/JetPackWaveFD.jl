@@ -31,6 +31,7 @@ function JetProp2DAcoIsoDenQ_DEO2_FDTD(;
         nsponge = 50,
         wavelet = WaveletCausalRicker(f=5.0),
         freesurface = false,
+        imgcondition = "standard",
         nthreads = Sys.CPU_THREADS,
         reportinterval = 500)
     # dtrec must be integer multiple of dtmod
@@ -74,6 +75,16 @@ function JetProp2DAcoIsoDenQ_DEO2_FDTD(;
         compressor[wavefield_active] = WaveFD.Compressor(Float32, Float32, C, size(ginsu,interior=isinterior), (nz_subcube,nx_subcube), compscale, ntrec, isinterior)
     end
 
+    # imaging condition 
+    icdict = Dict(
+        lowercase("standard") => WaveFD.ImagingConditionStandard(),
+        lowercase("FWI") => WaveFD.ImagingConditionWaveFieldSeparationFWI(),
+        lowercase("RTM") => WaveFD.ImagingConditionWaveFieldSeparationRTM())
+
+    if lowercase(imgcondition) ∉ keys(icdict)
+        error("Supplied imaging condition 'imgcondition' is not in [standard, FWI, RTM]")
+    end
+        
     Jet(
         dom = dom,
         rng = rng,
@@ -111,6 +122,7 @@ function JetProp2DAcoIsoDenQ_DEO2_FDTD(;
             nbx_inject = nbx_inject,
             wavelet = wavelet,
             freesurface = freesurface,
+            imgcondition = get(icdict, lowercase(imgcondition), WaveFD.ImagingConditionStandard()),
             nthreads = nthreads,
             reportinterval = reportinterval,
             stats = Dict{String,Float64}("MCells/s"=>0.0, "%io"=>0.0, "%inject/extract"=>0.0, "%imaging"=>0.0)))
@@ -654,7 +666,7 @@ function JopProp2DAcoIsoDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
             end
 
             # born accumulation
-            cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, δm_ginsu, DP)
+            cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:imgcondition], δm_ginsu, DP)
         end
     end
     JopProp2DAcoIsoDenQ_DEO2_FDTD_stats(kwargs[:stats], kwargs[:ginsu], ntmod, time()-time1, cumtime_io, cumtime_ex, cumtime_im)
