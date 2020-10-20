@@ -530,17 +530,17 @@ function JopProp3DAcoTTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
 
     itskip = round(Int, kwargs[:dtrec]/kwargs[:dtmod])
     time1 = time()
-    cumtime_io, cumtime_ex = 0.0, 0.0
+    cumtime_io, cumtime_ex, cumtime_pr = 0.0, 0.0, 0.0
     kwargs[:reportinterval] == 0 || @info "nonlinear forward on $(gethostname()), srcfieldfile=$(kwargs[:srcfieldfile])"
 
     set_zero_subnormals(true)
     for it = 1:ntmod_wav
         if kwargs[:reportinterval] != 0 && (it % kwargs[:reportinterval] == 0 || it == ntmod_wav)
-            JopProp3DAcoTTIDenQ_DEO2_FDTD_write_history_nl(kwargs[:ginsu], it, ntmod_wav, time()-time1, cumtime_io, cumtime_ex, wavefields["pcur"], d)
+            JopProp3DAcoTTIDenQ_DEO2_FDTD_write_history_nl(kwargs[:ginsu], it, ntmod_wav, time()-time1, cumtime_io, cumtime_ex, cumtime_pr, wavefields["pcur"], d)
         end
 
         # propagate and wavefield swap
-        WaveFD.propagateforward!(p)
+        cumtime_pr += @elapsed WaveFD.propagateforward!(p)
         wavefields["pcur"],wavefields["pold"] = wavefields["pold"],wavefields["pcur"]
         wavefields["mcur"],wavefields["mold"] = wavefields["mold"],wavefields["mcur"]
 
@@ -553,7 +553,7 @@ function JopProp3DAcoTTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
         if it >= it0 && rem(it-1,itskip) == 0
             if length(d) > 0
                 # extract receiver data
-                WaveFD.extractdata!(d, wavefields["pold"], div(it-1,itskip)+1, iz_rec, iy_rec, ix_rec, c_rec)
+                cumtime_ex += @elapsed WaveFD.extractdata!(d, wavefields["pold"], div(it-1,itskip)+1, iz_rec, iy_rec, ix_rec, c_rec)
             end
 
             # scale spatial derivatives by v^2/b to make them temporal derivatives
@@ -695,17 +695,17 @@ function JopProp3DAcoTTIDenQ_DEO2_FDTD_df!(δd::AbstractArray, δm::AbstractArra
     itskip = round(Int, kwargs[:dtrec]/kwargs[:dtmod])
     kwargs[:reportinterval] == 0 || @info "linear forward on $(gethostname()), srcfieldfile=$(kwargs[:srcfieldfile])"
     time1 = time()
-    cumtime_io, cumtime_ex, cumtime_im = 0.0, 0.0, 0.0
+    cumtime_io, cumtime_ex, cumtime_im, cumtime_pr = 0.0, 0.0, 0.0, 0.0
 
     set_zero_subnormals(true)
     for it = 1:ntmod
         if kwargs[:reportinterval] != 0 && (it % kwargs[:reportinterval] == 0 || it == ntmod)
             JopProp3DAcoTTIDenQ_DEO2_FDTD_write_history_ln(kwargs[:ginsu], it, ntmod, time()-time1, 
-                cumtime_io, cumtime_ex, cumtime_im, pcur, δdinterp, "forward")
+                cumtime_io, cumtime_ex, cumtime_im, cumtime_pr, pcur, δdinterp, "forward")
         end
 
         # propagate and swap wavefields
-        WaveFD.propagateforward!(p)
+        cumtime_pr += @elapsed WaveFD.propagateforward!(p)
         pcur,pold = pold,pcur
 
         if rem(it-1,itskip) == 0
@@ -834,16 +834,16 @@ function JopProp3DAcoTTIDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
     itskip = round(Int, kwargs[:dtrec]/kwargs[:dtmod])
     kwargs[:reportinterval] == 0 || @info "linear adjoint on $(gethostname()), srcfieldfile=$(kwargs[:srcfieldfile])"
     time1 = time()
-    cumtime_io, cumtime_ex, cumtime_im = 0.0, 0.0, 0.0
+    cumtime_io, cumtime_ex, cumtime_im, cumtime_pr = 0.0, 0.0, 0.0, 0.0
 
     set_zero_subnormals(true)
     for it = ntmod:-1:1
         if kwargs[:reportinterval] != 0 && (it % kwargs[:reportinterval] == 0 || it == ntmod)
-            JopProp3DAcoTTIDenQ_DEO2_FDTD_write_history_ln(kwargs[:ginsu], it, ntmod, time()-time1, cumtime_io, cumtime_ex, cumtime_im, pcur, δdinterp, "adjoint")
+            JopProp3DAcoTTIDenQ_DEO2_FDTD_write_history_ln(kwargs[:ginsu], it, ntmod, time()-time1, cumtime_io, cumtime_ex, cumtime_im, cumtime_pr, pcur, δdinterp, "adjoint")
         end
 
         # propagate and wavefield swap
-        WaveFD.propagateadjoint!(p)
+        cumtime_pr += @elapsed WaveFD.propagateadjoint!(p)
         pcur,pold = pold,pcur
 
         # inject receiver data
@@ -908,24 +908,26 @@ end
 
 Jets.perfstat(J::T) where {D,R,T<:Jet{D,R,typeof(JopProp3DAcoTTIDenQ_DEO2_FDTD_f!)}} = state(J).stats
 
-@inline function JopProp3DAcoTTIDenQ_DEO2_FDTD_write_history_ln(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_ex, cumtime_im, pcur, d::AbstractArray{T}, mode) where {T}
+@inline function JopProp3DAcoTTIDenQ_DEO2_FDTD_write_history_ln(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_ex, cumtime_im, cumtime_pr,pcur, d::AbstractArray{T}, mode) where {T}
     itd = occursin("adjoint", mode) ? ntmod-it+1 : it
     rmsp = sqrt(norm(pcur)^2 / length(pcur))
     rmsd = d != nothing ? sqrt(norm(d)^2 / length(d)) : zero(T)
-    @info @sprintf("PropLn3DAcoTTIDenQ_DEO2_FDTD, %s, time step %5d of %5d ; %7.2f MCells/s (IO=%5.2f%%, EX=%5.2f%%, IM=%5.2f%%) -- rms d,p; %10.4e %10.4e", mode, itd, ntmod,
+    @info @sprintf("PropLn3DAcoTTIDenQ_DEO2_FDTD, %s, time step %5d of %5d ; %7.2f MCells/s (IO=%5.2f%%, EX=%5.2f%%, IM=%5.2f%%, PR=%5.2f%%) -- rms d,p; %10.4e %10.4e", mode, itd, ntmod,
                     megacells_per_second(size(ginsu)..., itd-1, cumtime_total),
                     cumtime_total > 0 ? cumtime_io/cumtime_total*100.0 : 0.0,
                     cumtime_total > 0 ? cumtime_ex/cumtime_total*100.0 : 0.0,
-                    cumtime_total > 0 ? cumtime_im/cumtime_total*100.0 : 0.0, rmsd, rmsp)
+                    cumtime_total > 0 ? cumtime_im/cumtime_total*100.0 : 0.0,
+                    cumtime_total > 0 ? cumtime_pr/cumtime_total*100.0 : 0.0, rmsd, rmsp)
 end
 
-@inline function JopProp3DAcoTTIDenQ_DEO2_FDTD_write_history_nl(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_ex, pcur, d::AbstractArray{T}) where {T}
+@inline function JopProp3DAcoTTIDenQ_DEO2_FDTD_write_history_nl(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_ex, cumtime_pr, pcur, d::AbstractArray{T}) where {T}
     rmsp = sqrt(norm(pcur)^2 / length(pcur))
     rmsd = length(d) > 0 ? sqrt(norm(d)^2 / length(d)) : zero(T)
-    @info @sprintf("Prop3DAcoTTIDenQ_DEO2_FDTD, nonlinear forward, time step %5d of %5d ; %7.2f MCells/s (IO=%5.2f%%, EX=%5.2f%%) -- rms d,p; %10.4e %10.4e", it, ntmod,
+    @info @sprintf("Prop3DAcoTTIDenQ_DEO2_FDTD, nonlinear forward, time step %5d of %5d ; %7.2f MCells/s (IO=%5.2f%%, EX=%5.2f%%, PR=%5.2f%%) -- rms d,p; %10.4e %10.4e", it, ntmod,
                     megacells_per_second(size(ginsu)..., it-1, cumtime_total),
                     cumtime_total > 0 ? cumtime_io/cumtime_total*100.0 : 0.0,
-                    cumtime_total > 0 ? cumtime_ex/cumtime_total*100.0 : 0.0, rmsd, rmsp)
+                    cumtime_total > 0 ? cumtime_ex/cumtime_total*100.0 : 0.0,
+                    cumtime_total > 0 ? cumtime_pr/cumtime_total*100.0 : 0.0, rmsd, rmsp)
 end
 
 function Base.close(j::Jet{D,R,typeof(JopProp3DAcoTTIDenQ_DEO2_FDTD_f!)}) where {D,R}
