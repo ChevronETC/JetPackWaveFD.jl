@@ -43,6 +43,7 @@ function JetProp3DAcoVTIDenQ_DEO2_FDTD(;
         nsponge = 50,
         wavelet = WaveletCausalRicker(f=5.0),
         freesurface = false,
+        imgcondition = "standard",
         nthreads = Sys.CPU_THREADS,
         reportinterval = 500)
 
@@ -120,6 +121,16 @@ function JetProp3DAcoVTIDenQ_DEO2_FDTD(;
             (nz_subcube,ny_subcube,nx_subcube), compscale, ntrec, isinterior)
     end
 
+    # imaging condition 
+    icdict = Dict(
+        lowercase("standard") => WaveFD.ImagingConditionStandard(),
+        lowercase("FWI") => WaveFD.ImagingConditionWaveFieldSeparationFWI(),
+        lowercase("RTM") => WaveFD.ImagingConditionWaveFieldSeparationRTM())
+
+    if lowercase(imgcondition) ∉ keys(icdict)
+        error("Supplied imaging condition 'imgcondition' is not in [standard, FWI, RTM]")
+    end
+
     # construct:
     Jet(
         dom = dom,
@@ -168,6 +179,7 @@ function JetProp3DAcoVTIDenQ_DEO2_FDTD(;
             nbx_inject = nbx_inject,
             wavelet = wavelet,
             freesurface = freesurface,
+            imgcondition = get(icdict, lowercase(imgcondition), WaveFD.ImagingConditionStandard()),
             nthreads = nthreads,
             reportinterval = reportinterval,
             stats = Dict{String,Float64}("MCells/s"=>0.0, "%io"=>0.0, "%inject/extract"=>0.0, "%imaging"=>0.0)))
@@ -845,7 +857,7 @@ function JopProp3DAcoVTIDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
             end
 
             # born accumulation
-            cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], δm_ginsu, wavefields)
+            cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], kwargs[:imgcondition], δm_ginsu, wavefields)
         end
     end
     set_zero_subnormals(false)
