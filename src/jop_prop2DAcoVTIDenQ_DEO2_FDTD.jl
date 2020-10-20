@@ -868,7 +868,7 @@ Jets.perfstat(J::T) where {D,R,T<:Jet{D,R,typeof(JopProp2DAcoVTIDenQ_DEO2_FDTD_f
                     cumtime_total > 0 ? cumtime_pr/cumtime_total*100.0 : 0.0, rmsd, rmsp)
 end
 
-@inline function JopProp2DAcoVTIDenQ_DEO2_FDTD_write_history_nl(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_ex, pcur, d::AbstractArray{T}) where {T}
+@inline function JopProp2DAcoVTIDenQ_DEO2_FDTD_write_history_nl(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_ex, cumtime_pr, pcur, d::AbstractArray{T}) where {T}
     rmsp = sqrt(norm(pcur)^2 / length(pcur))
     rmsd = length(d) > 0 ? sqrt(norm(d)^2 / length(d)) : zero(T)
     @info @sprintf("Prop2DAcoVTIDenQ_DEO2_FDTD, nonlinear forward, time step %5d of %5d ; %7.2f MCells/s (IO=%5.2f%%, EX=%5.2f%%, PR=%5.2f%%) -- rms d,p; %10.4e %10.4e", it, ntmod,
