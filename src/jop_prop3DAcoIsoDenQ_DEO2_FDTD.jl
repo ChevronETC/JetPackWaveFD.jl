@@ -734,25 +734,31 @@ end
 Jets.perfstat(J::T) where {D,R,T<:Jet{D,R,typeof(JopProp3DAcoIsoDenQ_DEO2_FDTD_f!)}} = state(J).stats
 
 @inline function JopProp3DAcoIsoDenQ_DEO2_FDTD_write_history_ln(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_ex, cumtime_im, cumtime_pr, pcur, d::AbstractArray{T}, mode) where {T}
-    itd = occursin("adjoint", mode) ? ntmod-it+1 : it
-    rmsp = sqrt(norm(pcur)^2 / length(pcur))
-    rmsd = d != nothing ? sqrt(norm(d)^2 / length(d)) : zero(T)
-    @info @sprintf("PropLn3DAcoIsoDenQ_DEO2_FDTD, %s, time step %5d of %5d ; %7.2f MCells/s (IO=%5.2f%%, EX=%5.2f%%, IM=%5.2f%%, PR=%5.2f%%) -- rms d,p; %10.4e %10.4e", mode, itd, ntmod,
-                    megacells_per_second(size(ginsu)..., itd-1, cumtime_total),
-                    cumtime_total > 0 ? cumtime_io/cumtime_total*100.0 : 0.0,
-                    cumtime_total > 0 ? cumtime_ex/cumtime_total*100.0 : 0.0,
-                    cumtime_total > 0 ? cumtime_im/cumtime_total*100.0 : 0.0,
-                    cumtime_total > 0 ? cumtime_pr/cumtime_total*100.0 : 0.0, rmsd, rmsp)
+    jt = occursin("adjoint", mode) ? ntmod-it+1 : it
+    kt = fmt("5d", jt)
+    nt = fmt("5d", ntmod)
+    mcells = fmt("7.2f", megacells_per_second(size(ginsu)..., jt-1, cumtime_total))
+    IO = fmt("5.2f", cumtime_total > 0 ? cumtime_io/cumtime_total*100.0 : 0.0)
+    EX = fmt("5.2f", cumtime_total > 0 ? cumtime_ex/cumtime_total*100.0 : 0.0)
+    IM = fmt("5.2f", cumtime_total > 0 ? cumtime_im/cumtime_total*100.0 : 0.0)
+    PR = fmt("5.2f", cumtime_total > 0 ? cumtime_pr/cumtime_total*100.0 : 0.0)
+    rmsd = fmt("10.4e", length(d) > 0 ? sqrt(norm(d)^2 / length(d)) : zero(T))
+    rmsp = fmt("10.4e", sqrt(norm(pcur)^2 / length(pcur)))
+
+    @info "Prop3DAcoIsoDenQ_DEO2_FDTD, $mode, time step $kt of $nt $mcells MCells/s (IO=$IO, EX=$EX, IM=$IM, PR=$PR) -- rms d,p; $rmsd $rmsp"
 end
 
 @inline function JopProp3DAcoIsoDenQ_DEO2_FDTD_write_history_nl(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_ex, cumtime_pr, pcur, d::AbstractArray{T}) where {T}
-    rmsp = sqrt(norm(pcur)^2 / length(pcur))
-    rmsd = length(d) > 0 ? sqrt(norm(d)^2 / length(d)) : zero(T)
-    @info @sprintf("Prop3DAcoIsoDenQ_DEO2_FDTD, nonlinear forward, time step %5d of %5d ; %7.2f MCells/s (IO=%5.2f%%, EX=%5.2f%%, PR=%5.2f%%) -- rms d,p; %10.4e %10.4e", it, ntmod,
-                    megacells_per_second(size(ginsu)..., it-1, cumtime_total),
-                    cumtime_total > 0 ? cumtime_io/cumtime_total*100.0 : 0.0,
-                    cumtime_total > 0 ? cumtime_ex/cumtime_total*100.0 : 0.0,
-                    cumtime_total > 0 ? cumtime_pr/cumtime_total*100.0 : 0.0, rmsd, rmsp)
+    kt = fmt("5d", it)
+    nt = fmt("5d", ntmod)
+    mcells = fmt("7.2f", megacells_per_second(size(ginsu)..., it-1, cumtime_total))
+    IO = fmt("5.2f", cumtime_total > 0 ? cumtime_io/cumtime_total*100.0 : 0.0)
+    EX = fmt("5.2f", cumtime_total > 0 ? cumtime_ex/cumtime_total*100.0 : 0.0)
+    PR = fmt("5.2f", cumtime_total > 0 ? cumtime_pr/cumtime_total*100.0 : 0.0)
+    rmsd = fmt("10.4e", length(d) > 0 ? sqrt(norm(d)^2 / length(d)) : zero(T))
+    rmsp = fmt("10.4e", sqrt(norm(pcur)^2 / length(pcur)))
+
+    @info "Prop3DAcoIsoDenQ_DEO2_FDTD, nonlinear forward, time step $kt of $nt $mcells MCells/s (IO=$IO, EX=$EX, PR=$PR) -- rms d,p; $rmsd $rmsp"
 end
 
 function Base.close(j::Jet{D,R,typeof(JopProp3DAcoIsoDenQ_DEO2_FDTD_f!)}) where {D,R}
