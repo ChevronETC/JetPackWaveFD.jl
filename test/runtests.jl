@@ -1,3 +1,7 @@
+# set random seed to promote repeatability in CI unit tests
+using Random
+Random.seed!(101)
+
 for filename in (
         "ginsu.jl",
         "jop_prop2DAcoIsoDenQ_DEO2_FDTD.jl",
