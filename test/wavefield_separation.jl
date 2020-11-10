@@ -19,7 +19,7 @@ Tests:
    a. model in water velocity and subtract to remove direct wave
    b. test: cc(g_RTM,highpass * g_RTM) > cc(g_STD,highpass * g_STD)
 =#
-using WaveFD, JetPackWaveFD, JetPack, Jets, Random, LinearAlgebra, Test, Printf
+using WaveFD, JetPackWaveFD, JetPack, Jets, Random, LinearAlgebra, Test
 
 fpeak = 20
 dtmod,dtrec = 0.001,0.005
