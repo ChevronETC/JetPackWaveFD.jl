@@ -1,4 +1,4 @@
-using Formatting, FFTW, JetPackWaveFD, Jets, LinearAlgebra, Random, SpecialFunctions, Statistics, Test, WaveFD
+using Formatting, FFTW, Jets, JetPackWaveFD, LinearAlgebra, SpecialFunctions, Statistics, Test, WaveFD
 
 function make_op(interpmethod, fs; comptype = Float32)
     nsponge = 10

@@ -142,35 +142,27 @@ end
 
         # standard FWI
         d1b = opStd * vb;
-        t1 = @elapsed begin
-            r1  = d1b .- d1a;
-            J1 = jacobian!(opStd,vb);
-            g1 = J1' * r1;
-        end
+        r1  = d1b .- d1a;
+        J1 = jacobian!(opStd,vb);
+        g1 = J1' * r1;
 
         # wavefield separation FWI
         d2b = opFwi * vb;
-        t2 = @elapsed begin
-            r2  = d2b .- d1a;
-            J2 = jacobian!(opFwi,vb);
-            g2 = J2' * r2;
-        end
+        r2  = d2b .- d1a;
+        J2 = jacobian!(opFwi,vb);
+        g2 = J2' * r2;
 
         # standard RTM
         d3b = opRtm * vb;
-        t3 = @elapsed begin
-            r3 = d1a .- d1w
-            J3 = jacobian!(opStd,vb);
-            g3 = J3' * r3;
-        end
+        r3 = d1a .- d1w
+        J3 = jacobian!(opStd,vb);
+        g3 = J3' * r3;
 
         # wavefield separation RTM
         d4b = opRtm * vb;
-        t4 = @elapsed begin
-            r4 = d1a .- d1w
-            J4 = jacobian!(opRtm,vb);
-            g4 = J4' * r4;
-        end
+        r4 = d1a .- d1w
+        J4 = jacobian!(opRtm,vb);
+        g4 = J4' * r4;
 
         # VTI and TTI operators take 3D array for model
         if physics != "ISO"
@@ -184,9 +176,6 @@ end
         close(opFwi)
         close(opRtm)
         
-        @info "timing STD=$(t1) FWI=$(t2) Ratio=$(t2/t1)"
-        @info "timing STD=$(t3) RTM=$(t4) Ratio=$(t4/t3)"
-
         # remove pixels near source to eliminate very large amplitudes
         nzero = 5
         g1[1:nzero,:] .= 0
@@ -228,7 +217,7 @@ end
         va[div(nz,2):end,:,:] .= 2500;
         vb[div(nz,2):end,:,:] .= 2500;
 
-        # VTI and TTI operators take 3D array for model
+        # VTI and TTI operators take 4D array for model
         if physics != "ISO"
             vw = reshape(vw,(nz,ny,nx,1))
             va = reshape(va,(nz,ny,nx,1))
@@ -240,37 +229,29 @@ end
 
         # standard FWI
         d1b = opStd * vb;
-        t1 = @elapsed begin
-            r1  = d1b .- d1a;
-            J1 = jacobian!(opStd,vb);
-            g1 = J1' * r1;
-        end
+        r1  = d1b .- d1a;
+        J1 = jacobian!(opStd,vb);
+        g1 = J1' * r1;
 
         # wavefield separation FWI
         d2b = opFwi * vb;
-        t2 = @elapsed begin
-            r2  = d2b .- d1a;
-            J2 = jacobian!(opFwi,vb);
-            g2 = J2' * r2;
-        end
+        r2  = d2b .- d1a;
+        J2 = jacobian!(opFwi,vb);
+        g2 = J2' * r2;
 
         # standard RTM
         d3b = opRtm * vb;
-        t3 = @elapsed begin
-            r3 = d1a .- d1w
-            J3 = jacobian!(opStd,vb);
-            g3 = J3' * r3;
-        end
+        r3 = d1a .- d1w
+        J3 = jacobian!(opStd,vb);
+        g3 = J3' * r3;
 
         # wavefield separation RTM
         d4b = opRtm * vb;
-        t4 = @elapsed begin
-            r4 = d1a .- d1w
-            J4 = jacobian!(opRtm,vb);
-            g4 = J4' * r4;
-        end
+        r4 = d1a .- d1w
+        J4 = jacobian!(opRtm,vb);
+        g4 = J4' * r4;
 
-        # VTI and TTI operators take 3D array for model
+        # VTI and TTI operators take 4D array for model
         if physics != "ISO"
             g1 = reshape(g1,(nz,ny,nx))
             g2 = reshape(g2,(nz,ny,nx))
@@ -282,9 +263,6 @@ end
         close(opFwi)
         close(opRtm)
         
-        @info "timing STD=$(t1) FWI=$(t2) Ratio=$(t2/t1)"
-        @info "timing STD=$(t3) RTM=$(t4) Ratio=$(t4/t3)"
-
         # remove pixels near source to eliminate very large amplitudes there
         nzero = 5
         g1[1:nzero,:,:] .= 0
