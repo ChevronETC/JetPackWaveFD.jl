@@ -18,6 +18,9 @@ Tests:
    correlation should be larger for RTM IC.
    a. model in water velocity and subtract to remove direct wave
    b. test: cc(g_RTM,highpass * g_RTM) > cc(g_STD,highpass * g_STD)
+
+Note these tests are skipped currently as serialized wavefields for the imaging condition 
+unit tests are too large for github CI.
 =#
 using WaveFD, JetPackWaveFD, JetPack, Jets, Random, LinearAlgebra, Test
 
@@ -110,7 +113,7 @@ function makeF(; dim::Int=2, physics::String="ISO", imgcondition::String="standa
 end
 
 @testset "ImgCondition" begin
-    @testset "Imaging Condition 2D tests, $(physics)" for physics in ("ISO", "VTI", "TTI")
+    @test_skip @testset "Imaging Condition 2D tests, $(physics)" for physics in ("ISO", "VTI", "TTI")
         write(stdout, "\n")
         write(stdout, "Imaging conditions 2D, physics=$(physics)\n")
 
@@ -197,7 +200,7 @@ end
         @test cc4 > cc3
     end
 
-    @testset "Imaging Condition 3D tests, $(physics)" for physics in ("ISO", "VTI", "TTI")
+    @test_skip @testset "Imaging Condition 3D tests, $(physics)" for physics in ("ISO", "VTI", "TTI")
         write(stdout, "\n")
         write(stdout, "Imaging conditions 3D, physics=$(physics)\n")
 
