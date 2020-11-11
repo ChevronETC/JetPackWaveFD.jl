@@ -435,6 +435,10 @@ Defaults for arguments are shown inside square brackets.
     or an array.
 * `freesurface [false]` Determines if a free surface (`true`) or absorbing (`false`) top boundary condition
     is applied.
+* `imgcondition` ["standard"] Selects the type of imaging condition used. Choose from "standard", "FWI", 
+    and "RTM". "FWI" and "RTM" will perform Kz wavenumber filtering prior to the imaging condition
+    in order to promote long wavelengths (for FWI), or remove long wavelength backscattered energy (for 
+    RTM). Note the true adjoint only exists for "standard" imaging condition currently.
 * `nthreads [Sys.CPU_THREADS]` The number of threads to use for OpenMP parallelization of the modeling.
 * `reportinterval [500]` The interval at which information about the propagtion is logged.
 
