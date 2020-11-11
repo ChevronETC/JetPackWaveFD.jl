@@ -46,7 +46,6 @@ function makeF(; dim::Int=2, physics::String="ISO", imgcondition::String="standa
         b = 0.001f0 .* ones(Float32,nz,nx)
 
         JopNlProp2DAcoIsoDenQ_DEO2_FDTD(; b = b, 
-            srcfieldfile = "/scratch/srcfieldfile-$(physics)-$(randstring(4)).bin",
             sz = sz, sx = sx, rz = rz, rx = rx, dz = δz, dx = δx,
             dtmod = dtmod, dtrec = dtrec, ntrec = ntrec, nsponge = nsponge,
             wavelet = WaveletCausalRicker(f=fpeak),
@@ -58,7 +57,6 @@ function makeF(; dim::Int=2, physics::String="ISO", imgcondition::String="standa
         η = 0.2 .* ones(Float32,nz,nx)
 
         JopNlProp2DAcoVTIDenQ_DEO2_FDTD(; b = b, ϵ = ϵ, η = η, 
-            srcfieldfile = "/scratch/srcfieldfile-$(physics)-$(randstring(4)).bin",
             sz = sz, sx = sx, rz = rz, rx = rx, dz = δz, dx = δx,
             dtmod = dtmod, dtrec = dtrec, ntrec = ntrec, nsponge = nsponge,
             wavelet = WaveletCausalRicker(f=fpeak),
@@ -71,7 +69,6 @@ function makeF(; dim::Int=2, physics::String="ISO", imgcondition::String="standa
         θ = (π/8) .* ones(Float32,nz,nx)
 
         JopNlProp2DAcoTTIDenQ_DEO2_FDTD(; b = b, ϵ = ϵ, η = η, θ = θ,
-            srcfieldfile = "/scratch/srcfieldfile-$(physics)-$(randstring(4)).bin",
             sz = sz, sx = sx, rz = rz, rx = rx, dz = δz, dx = δx,
             dtmod = dtmod, dtrec = dtrec, ntrec = ntrec, nsponge = nsponge,
             wavelet = WaveletCausalRicker(f=fpeak),
@@ -81,7 +78,6 @@ function makeF(; dim::Int=2, physics::String="ISO", imgcondition::String="standa
         b = 0.001f0 .* ones(Float32,nz,ny,nx)
 
         JopNlProp3DAcoIsoDenQ_DEO2_FDTD(; b = b, 
-            srcfieldfile = "/scratch/srcfieldfile-$(physics)-$(randstring(4)).bin",
             sz = sz, sy = sy, sx = sx, rz = rz, ry = ry, rx = rx, dz = δz, dy = δy, dx = δx,
             dtmod = dtmod, dtrec = dtrec, ntrec = ntrec, nsponge = nsponge,
             wavelet = WaveletCausalRicker(f=fpeak),
@@ -93,7 +89,6 @@ function makeF(; dim::Int=2, physics::String="ISO", imgcondition::String="standa
         η = 0.2 .* ones(Float32,nz,ny,nx)
 
         JopNlProp3DAcoVTIDenQ_DEO2_FDTD(; b = b, ϵ = ϵ, η = η, 
-            srcfieldfile = "/scratch/srcfieldfile-$(physics)-$(randstring(4)).bin",
             sz = sz, sy = sy, sx = sx, rz = rz, ry = ry, rx = rx, dz = δz, dy = δy, dx = δx,
             dtmod = dtmod, dtrec = dtrec, ntrec = ntrec, nsponge = nsponge,
             wavelet = WaveletCausalRicker(f=fpeak),
@@ -107,7 +102,6 @@ function makeF(; dim::Int=2, physics::String="ISO", imgcondition::String="standa
         ϕ = (π/6) .* ones(Float32,nz,ny,nx)
 
         JopNlProp3DAcoTTIDenQ_DEO2_FDTD(; b = b, ϵ = ϵ, η = η, θ = θ, ϕ = ϕ,
-            srcfieldfile = "/scratch/srcfieldfile-$(physics)-$(randstring(4)).bin",
             sz = sz, sy = sy, sx = sx, rz = rz, ry = ry, rx = rx, dz = δz, dy = δy, dx = δx,
             dtmod = dtmod, dtrec = dtrec, ntrec = ntrec, nsponge = nsponge,
             wavelet = WaveletCausalRicker(f=fpeak),
