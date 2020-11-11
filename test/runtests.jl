@@ -10,7 +10,8 @@ for filename in (
         "jop_prop3DAcoIsoDenQ_DEO2_FDTD.jl",
         "jop_prop3DAcoTTIDenQ_DEO2_FDTD.jl",
         "jop_prop3DAcoVTIDenQ_DEO2_FDTD.jl",
-        "jop_sinc_regular.jl"
+        "jop_sinc_regular.jl",
+        "wavefield_separation.jl"
     )
     include(filename)
 end
