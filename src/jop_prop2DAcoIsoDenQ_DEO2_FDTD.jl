@@ -250,11 +250,13 @@ Defaults for arguments are shown inside square brackets.
     * `UInt32` - compression using CvxCompress (windowing + 2D wavelet transform + 
         thresholding + quantization + run-length-encoding).
 * `compscale [1e-2]` determines the thresholding for the compression of the nonlinear source 
-    wavefield prior to serialization. Smaller values mean more aggressive thresholding.
+    wavefield prior to serialization. Larger values mean more aggressive compression. You can 
+    likely increase compscale to 1.0 before you start to notice differences in output from 
+    Jacobian operations. 
 * `nz_subcube, nx_subcube [32]` The Z and X sizes of windows used for compression 
     of the nonlinear source wavefield with `CvxCompress`. Note the requirement
     `[8 <= n*_subcube <=256]`.
-    * `isinterior [false]` boolean flag that indicates how the nonlinear source wavefield is
+* `isinterior [false]` boolean flag that indicates how the nonlinear source wavefield is
     saved. For large models, operation will be faster with `isinterior = true`, but 
     the linearization correctness test may fail.
     * `true` the entire model including absorbing boundaries is serialized and deserialized
