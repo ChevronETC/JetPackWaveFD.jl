@@ -49,6 +49,7 @@ function makeF(; dim::Int=2, physics::String="ISO", imgcondition::String="standa
         b = 0.001f0 .* ones(Float32,nz,nx)
 
         JopNlProp2DAcoIsoDenQ_DEO2_FDTD(; b = b, 
+            comptype = UInt32, compscale = 1e-1,
             sz = sz, sx = sx, rz = rz, rx = rx, dz = δz, dx = δx,
             dtmod = dtmod, dtrec = dtrec, ntrec = ntrec, nsponge = nsponge,
             wavelet = WaveletCausalRicker(f=fpeak),
@@ -59,7 +60,8 @@ function makeF(; dim::Int=2, physics::String="ISO", imgcondition::String="standa
         ϵ = 0.1 .* ones(Float32,nz,nx)
         η = 0.2 .* ones(Float32,nz,nx)
 
-        JopNlProp2DAcoVTIDenQ_DEO2_FDTD(; b = b, ϵ = ϵ, η = η, 
+        JopNlProp2DAcoVTIDenQ_DEO2_FDTD(; b = b, ϵ = ϵ, η = η,  
+            comptype = UInt32, compscale = 1e-1,
             sz = sz, sx = sx, rz = rz, rx = rx, dz = δz, dx = δx,
             dtmod = dtmod, dtrec = dtrec, ntrec = ntrec, nsponge = nsponge,
             wavelet = WaveletCausalRicker(f=fpeak),
@@ -71,7 +73,8 @@ function makeF(; dim::Int=2, physics::String="ISO", imgcondition::String="standa
         η = 0.2 .* ones(Float32,nz,nx)
         θ = (π/8) .* ones(Float32,nz,nx)
 
-        JopNlProp2DAcoTTIDenQ_DEO2_FDTD(; b = b, ϵ = ϵ, η = η, θ = θ,
+        JopNlProp2DAcoTTIDenQ_DEO2_FDTD(; b = b, ϵ = ϵ, η = η, θ = θ, 
+            comptype = UInt32, compscale = 1e-1,
             sz = sz, sx = sx, rz = rz, rx = rx, dz = δz, dx = δx,
             dtmod = dtmod, dtrec = dtrec, ntrec = ntrec, nsponge = nsponge,
             wavelet = WaveletCausalRicker(f=fpeak),
@@ -80,7 +83,8 @@ function makeF(; dim::Int=2, physics::String="ISO", imgcondition::String="standa
     elseif dim == 3 && physics == "ISO"
         b = 0.001f0 .* ones(Float32,nz,ny,nx)
 
-        JopNlProp3DAcoIsoDenQ_DEO2_FDTD(; b = b, 
+        JopNlProp3DAcoIsoDenQ_DEO2_FDTD(; b = b,  
+            comptype = UInt32, compscale = 1e-1,
             sz = sz, sy = sy, sx = sx, rz = rz, ry = ry, rx = rx, dz = δz, dy = δy, dx = δx,
             dtmod = dtmod, dtrec = dtrec, ntrec = ntrec, nsponge = nsponge,
             wavelet = WaveletCausalRicker(f=fpeak),
@@ -91,7 +95,8 @@ function makeF(; dim::Int=2, physics::String="ISO", imgcondition::String="standa
         ϵ = 0.1 .* ones(Float32,nz,ny,nx)
         η = 0.2 .* ones(Float32,nz,ny,nx)
 
-        JopNlProp3DAcoVTIDenQ_DEO2_FDTD(; b = b, ϵ = ϵ, η = η, 
+        JopNlProp3DAcoVTIDenQ_DEO2_FDTD(; b = b, ϵ = ϵ, η = η,  
+            comptype = UInt32, compscale = 1e-1,
             sz = sz, sy = sy, sx = sx, rz = rz, ry = ry, rx = rx, dz = δz, dy = δy, dx = δx,
             dtmod = dtmod, dtrec = dtrec, ntrec = ntrec, nsponge = nsponge,
             wavelet = WaveletCausalRicker(f=fpeak),
@@ -104,7 +109,8 @@ function makeF(; dim::Int=2, physics::String="ISO", imgcondition::String="standa
         θ = (π/8) .* ones(Float32,nz,ny,nx)
         ϕ = (π/6) .* ones(Float32,nz,ny,nx)
 
-        JopNlProp3DAcoTTIDenQ_DEO2_FDTD(; b = b, ϵ = ϵ, η = η, θ = θ, ϕ = ϕ,
+        JopNlProp3DAcoTTIDenQ_DEO2_FDTD(; b = b, ϵ = ϵ, η = η, θ = θ, ϕ = ϕ, 
+            comptype = UInt32, compscale = 1e-1,
             sz = sz, sy = sy, sx = sx, rz = rz, ry = ry, rx = rx, dz = δz, dy = δy, dx = δx,
             dtmod = dtmod, dtrec = dtrec, ntrec = ntrec, nsponge = nsponge,
             wavelet = WaveletCausalRicker(f=fpeak),
@@ -113,7 +119,7 @@ function makeF(; dim::Int=2, physics::String="ISO", imgcondition::String="standa
 end
 
 @testset "ImgCondition" begin
-    @test_skip @testset "Imaging Condition 2D tests, $(physics)" for physics in ("ISO", "VTI", "TTI")
+    @testset "Imaging Condition 2D tests, $(physics)" for physics in ("ISO", "VTI", "TTI")
         write(stdout, "\n")
         write(stdout, "Imaging conditions 2D, physics=$(physics)\n")
 
@@ -200,7 +206,7 @@ end
         @test cc4 > cc3
     end
 
-    @test_skip @testset "Imaging Condition 3D tests, $(physics)" for physics in ("ISO", "VTI", "TTI")
+    @testset "Imaging Condition 3D tests, $(physics)" for physics in ("ISO", "VTI", "TTI")
         write(stdout, "\n")
         write(stdout, "Imaging conditions 3D, physics=$(physics)\n")
 
