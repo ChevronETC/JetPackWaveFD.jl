@@ -35,36 +35,36 @@ We use the package `CvxCompress.jl`, which is built on the C++ library `CvxCompr
 ## See Also
 * `WaveFD` single time step modeling implementations wrapping high performance C++ kernels.
 * `Source Wavelets` section in the `WaveFD` documentation, discussing a selection of wavelets commonly used in seismic modeling.
-* `JetPackWaveDevito` package, implementing these same 6 operators using the Devito domain specific language (https://www.devitoproject.org/).
+* `JetPackWaveDevito` package, implementing these same 6 operators using the Devito domain specific language [https://www.devitoproject.org](https://www.devitoproject.org).
 
 ## References
 * Our implementation of self adjoint energy conserving propagators 
     * *Self-adjoint, energy-conserving second-order pseudoacoustic systems for VTI and TTI media for reverse migration and full-waveform inversion* (2016)
-    SEG Technical Program Expanded Abstracts
-    https://library.seg.org/doi/10.1190/segam2016-13878451.1
-    * PDF documents in the `WaveFD` package describing derivations for time update equations and linearization of constant density acoustics: https://github.com/ChevronETC/WaveFD.jl/blob/master/docs/latex_notes.
+        SEG Technical Program Expanded Abstracts
+        [https://library.seg.org/doi/10.1190/segam2016-13878451.1](https://library.seg.org/doi/10.1190/segam2016-13878451.1)
+    * PDF documents in the `WaveFD` package describing derivations for time update equations and linearization of constant density acoustics: 
+        [https://github.com/ChevronETC/WaveFD.jl/blob/master/docs/latex_notes](https://github.com/ChevronETC/WaveFD.jl/blob/master/docs/latex_notes).
 
 * Maxwell body reference
     Fung, Y.C., A First Course in Continuum Mechanics, Prentice-Hall, 1977.
 
 * Interpolation in `JetPackWaveFD` for off-grid physical locations 
-    * Bilinear: https://en.wikipedia.org/wiki/Bilinear_interpolation
-    * Trilinear: https://en.wikipedia.org/wiki/Trilinear_interpolation
+    * Bilinear: [https://en.wikipedia.org/wiki/Bilinear_interpolation](https://en.wikipedia.org/wiki/Bilinear_interpolation)
+    * Trilinear: [https://en.wikipedia.org/wiki/Trilinear_interpolation](https://en.wikipedia.org/wiki/Trilinear_interpolation)
     * Sinc: *Arbitrary source and receiver positioning in finite‐difference schemes using Kaiser windowed sinc functions* (2002)
-    Graham Hicks, Geophysics, Vol. 67
-    https://library.seg.org/doi/10.1190/1.1451454
+        Graham Hicks, Geophysics, Vol. 67
+        [https://library.seg.org/doi/10.1190/1.1451454](https://library.seg.org/doi/10.1190/1.1451454)
 
 * Stability condition for temporal discretization in finite difference solution of PDEs
-    * https://en.wikipedia.org/wiki/Courant%E2%80%93Friedrichs%E2%80%93Lewy_condition
+    * [https://en.wikipedia.org/wiki/Courant%E2%80%93Friedrichs%E2%80%93Lewy_condition](https://en.wikipedia.org/wiki/Courant%E2%80%93Friedrichs%E2%80%93Lewy_condition)
 
 * Weak elastic anisotropy
     * *Weak elastic anisotropy* (1986)
-    Leon Thomsen, Geophysics, Vol. 51
-    https://library.seg.org/doi/abs/10.1190/1.1442051
+        Leon Thomsen, Geophysics, Vol. 51
+        [https://library.seg.org/doi/abs/10.1190/1.1442051](https://library.seg.org/doi/abs/10.1190/1.1442051)
     * *Acoustic approximations for processing in transversely isotropic media* (1998)
-    Tariq Alkhalifah
-    Geophysics, Vol. 63
-    https://library.seg.org/doi/pdf/10.1190/1.1444361
+        Tariq Alkhalifah, Geophysics, Vol. 63
+        [https://library.seg.org/doi/pdf/10.1190/1.1444361](https://library.seg.org/doi/pdf/10.1190/1.1444361)
 
 
 
