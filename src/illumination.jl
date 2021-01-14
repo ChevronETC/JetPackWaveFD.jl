@@ -43,7 +43,7 @@ the time of the finite difference evolution.
 If `J::Jop` is a `Jets` block operator or distributed block operator, the source 
 illuminations from all blocks will be accumulated with a simple sum.
 
-`srcillum(J)` creates and returns an array with the source illumination from `J::Jop`, 
+`srcillum(J)` creates and returns an array with the source illumination from `J::JopLn`, 
 using the current location defined in the `Jet`.
 
 `srcillum(J, m)` creates and returns an array with the source illumination from `J::Jop` 
@@ -52,7 +52,7 @@ for the location `m`.
 `srcillum!(y, J, m)` zeros the passed array `y` and then accumulates to the source 
 illumination from `J::Jop` at the location `m` into `y`.
 """
-srcillum(J::Jop) = srcillum!(zeros(domain(J)), J)
+srcillum(J::JopLn) = srcillum!(zeros(domain(J)), J)
 srcillum(J::Jop, m::AbstractArray) = srcillum!(zeros(domain(J)), J, m)
 
 @doc (@doc srcillum(J))
