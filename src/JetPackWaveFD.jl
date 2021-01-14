@@ -19,7 +19,7 @@ function realizewavelet(wavelet, sz, sx, st, dtmod, ntmod_wav)
             wavelet_realization = wavelet
         end
         if size(wavelet_realization) != (ntmod_wav, length(sx))
-            throw(ArgumentError("expected size(wavelet_relaization) = $ntmod_wav - got $(size(wavelet_realization)) -- dtmod=$(dtmod)"))
+            throw(ArgumentError("expected size(wavelet_realization) = $ntmod_wav - got $(size(wavelet_realization)) -- dtmod=$(dtmod)"))
         end
     else
         wavelet_realization = zeros(Float32, ntmod_wav, length(sx))
