@@ -49,6 +49,7 @@ function JetProp3DAcoTTIDenQ_DEO2_FDTD(;
         nthreads = Sys.CPU_THREADS,
         reportinterval = 500)
 
+    @info "line $(@__LINE__) in $(@__FILE__)"
     # active and passive earth model properties.  The active set is in the model-space
     active_modelset = Dict{String,Int}()
     passive_modelset = Dict{String,Array{Float32,3}}()
@@ -61,13 +62,16 @@ function JetProp3DAcoTTIDenQ_DEO2_FDTD(;
             i += 1
         end
     end
+    @info "line $(@__LINE__) in $(@__FILE__)"
     passive_modelset["sinθ"] = isempty(θ) ? zeros(Float32, size(values(active_modelset)[1])) : sin.(convert(Array{Float32}, θ))
     passive_modelset["cosθ"] = isempty(θ) ? ones(Float32, size(values(active_modelset)[1])) : cos.(convert(Array{Float32}, θ))
     passive_modelset["sinϕ"] = isempty(ϕ) ? zeros(Float32, size(values(active_modelset)[1])) : sin.(convert(Array{Float32}, ϕ))
     passive_modelset["cosϕ"] = isempty(ϕ) ? ones(Float32, size(values(active_modelset)[1])) : cos.(convert(Array{Float32}, ϕ))
+    @info "line $(@__LINE__) in $(@__FILE__)"
     @assert length(active_modelset) > 0
 
     # active and passive wavefields (an active wavefield is serialized to disk)
+    @info "line $(@__LINE__) in $(@__FILE__)"
     active_modelset_keys = keys(active_modelset)
     local active_wavefields, modeltype
     if "v" ∈ active_modelset_keys && "b" ∉ active_modelset_keys && "ϵ" ∈ active_modelset_keys && "η" ∈ active_modelset_keys
@@ -79,16 +83,20 @@ function JetProp3DAcoTTIDenQ_DEO2_FDTD(;
     else
         error("unsupported model-space")
     end
+    @info "line $(@__LINE__) in $(@__FILE__)"
 
     # dtrec must be integer multiple of dtmod
     @assert abs(dtrec - dtmod*round(dtrec/dtmod,RoundNearest)) < eps(Float32)
+    @info "line $(@__LINE__) in $(@__FILE__)"
 
     # source location (sz,sy,sx,st)
     sz,sy,sx,st = map(val->Float64[val...], (sz,sy,sx,st))
+    @info "line $(@__LINE__) in $(@__FILE__)"
 
     # domain and range
     dom = JetSpace(Float32, size(first(values(passive_modelset)))..., length(active_modelset))
     rng = JetSpace(Float32, ntrec, length(rz))
+    @info "line $(@__LINE__) in $(@__FILE__)"
 
     # type conversions
     z0, y0, x0, padz, padx = map(val->Float64(val), (z0, y0, x0, padz, pady, padx)) # used for computing integer grid locations for source injection
@@ -99,12 +107,15 @@ function JetProp3DAcoTTIDenQ_DEO2_FDTD(;
     if isa(wavelet, Array) == true
         wavelet = convert(Array{Float32}, wavelet)
     end
+    @info "line $(@__LINE__) in $(@__FILE__)"
 
     # ginsu view of earth model... ginsu is aware of the sponge
     nsponge_top = freesurface ? 0 : nsponge
     padz_top = freesurface ? 0.0 : padz
+    @info "line $(@__LINE__) in $(@__FILE__)"
 
     ginsu = Ginsu((z0,y0,x0), (dz,dy,dx), size(b), (sz,sy,sx), (rz,ry,rx), ((padz_top,padz),(padx,padx),(pady,pady)), ((nsponge_top,nsponge),(nsponge,nsponge),(nsponge,nsponge)), T=Float32)
+    @info "line $(@__LINE__) in $(@__FILE__)"
 
     # if srcfieldfile is specified make sure its containing folder exists
     if srcfieldfile != ""
@@ -114,18 +125,22 @@ function JetProp3DAcoTTIDenQ_DEO2_FDTD(;
             mkpath(srcfieldpath)
         end
     end
+    @info "line $(@__LINE__) in $(@__FILE__)"
 
     # compression for nonlinear source wavefields
     C = WaveFD.comptype(comptype, Float32)[1]
     compressor = Dict{String,WaveFD.Compressor{Float32,Float32,C,3}}()
+    @info "line $(@__LINE__) in $(@__FILE__)"
 
     # we need to serialize for the data, but not for the linearization
     _active_wavefields = "pold" ∈ active_wavefields ? active_wavefields : [active_wavefields;"pold"]
+    @info "line $(@__LINE__) in $(@__FILE__)"
 
     for active_wavefield in _active_wavefields
         compressor[active_wavefield] = WaveFD.Compressor(Float32, Float32, C, size(ginsu,interior=isinterior),
             (nz_subcube,ny_subcube,nx_subcube), compscale, ntrec, isinterior)
     end
+    @info "line $(@__LINE__) in $(@__FILE__)"
 
     # imaging condition 
     icdict = Dict(
@@ -136,9 +151,10 @@ function JetProp3DAcoTTIDenQ_DEO2_FDTD(;
     if lowercase(imgcondition) ∉ keys(icdict)
         error("Supplied imaging condition 'imgcondition' is not in [standard, FWI, RTM]")
     end
+    @info "line $(@__LINE__) in $(@__FILE__)"
         
     # construct:
-    Jet(
+    jjj = Jet(
         dom = dom,
         rng = rng,
         f! = JopProp3DAcoTTIDenQ_DEO2_FDTD_f!,
@@ -189,6 +205,9 @@ function JetProp3DAcoTTIDenQ_DEO2_FDTD(;
             nthreads = nthreads,
             reportinterval = reportinterval,
             stats = Dict{String,Float64}("MCells/s"=>0.0, "%io"=>0.0, "%inject/extract"=>0.0, "%imaging"=>0.0)))
+
+    @info "line $(@__LINE__) in $(@__FILE__)"
+    jjj
 end
 
 @doc """
