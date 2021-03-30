@@ -18,8 +18,22 @@ function make_op(interpmethod, modeltype, fs; comptype = Float32)
 
     wavelet = WaveletCausalRicker(f=5.0)
 
-    b = ones(Float32,nz,nx)
-    v = 1500 .* ones(Float32,nz,nx)
+    b = Float32(1)    .* ones(Float32,nz,nx)
+    v = Float32(1500) .* ones(Float32,nz,nx)
+
+    local m
+    if modeltype == WaveFD.Prop2DAcoIsoDenQ_DEO2_FDTD_Model_V
+        kwargs = (b = b, )
+        m = reshape(v, nz, nx, 1)
+    elseif modeltype == WaveFD.Prop2DAcoIsoDenQ_DEO2_FDTD_Model_VB
+        kwargs = (nz = nz, nx = nx)
+        m = zeros(Float32, nz, nx, 2)
+        m[:,:,1] .= v
+        m[:,:,2] .= b
+    elseif modeltype == WaveFD.Prop2DAcoIsoDenQ_DEO2_FDTD_Model_B
+        kwargs = (v = v, )
+        m = reshape(b, nz, nx, 1)
+    end
 
     local m
     if modeltype == WaveFD.Prop2DAcoIsoDenQ_DEO2_FDTD_Model_V
@@ -188,7 +202,7 @@ end
                 end
             end
             u_ana[:,iz,ix] = irfft(U,nt_pad)[1:ntrec]
-            printfmt("{:.2f}\r", ((ix-1)*nz+iz-1)/((nz-1)*(nx-1))*100))
+            printfmt("{:.2f}\r", ((ix-1)*nz+iz-1)/((nz-1)*(nx-1))*100)
         end
         u_ana
     end

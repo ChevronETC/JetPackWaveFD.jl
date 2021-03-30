@@ -220,6 +220,9 @@ model assigned to it.
 The model is 4D with the slowest dimension for model parameter.  The earth model property maps to the slow-
 fimension array index via the `state(F).active_modelset` dictionary.
 
+The model is 4D with the slowest dimension for model parameter velocity [1] or buoyancy [2] in the case that both 
+`v` and `b` are active parameters. 
+        
 # Examples
 
 ## Model and acquisition geometry setup
@@ -445,7 +448,7 @@ function JopProp3DAcoIsoDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
 
     it0, ntmod_wav = WaveFD.default_ntmod(kwargs[:dtrec], kwargs[:dtmod], kwargs[:st], kwargs[:ntrec])
 
-    # source wavelet for injection, one for each source location
+    # source wavelet for injection, one for each source location 
     wavelet_realization = realizewavelet(kwargs[:wavelet], kwargs[:sz], kwargs[:sx], kwargs[:st], kwargs[:dtmod], ntmod_wav)
 
     # Get source and receiver interpolation coefficients
