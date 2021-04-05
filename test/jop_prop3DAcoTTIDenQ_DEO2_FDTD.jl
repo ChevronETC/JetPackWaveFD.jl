@@ -24,13 +24,13 @@ function make_op(modeltype, interpmethod, fs; v₀=1500, ϵ₀=0.2, η₀=0.4, c
         ϵ = zeros(Float32,nz,ny,nx)
         η = zeros(Float32,nz,ny,nx)
     else
-        ϵ = Float32[]
-        η = Float32[]
+        ϵ = Array{Float32}(undef,0,0,0)
+        η = Array{Float32}(undef,0,0,0)
     end
     
     b = ones(Float32,nz,ny,nx)
-    θ = (π/8) .* ones(Float32,nz,ny,nx)
-    ϕ = (π/4) .* ones(Float32,nz,ny,nx)
+    θ = (Float32(π)/8) .* ones(Float32,nz,ny,nx)
+    ϕ = (Float32(π)/4) .* ones(Float32,nz,ny,nx)
 
     F = JopNlProp3DAcoTTIDenQ_DEO2_FDTD(b = b, f = 0.85, ϵ = ϵ, η = η, θ = θ, ϕ = ϕ, 
         z0 = zmin, y0 = ymin, x0 = xmin, dz = dz, dy = dy, dx = dx, 
