@@ -24,8 +24,8 @@ function make_op(modeltype, interpmethod, fs; v₀=1500, ϵ₀=0.2, η₀=0.4, c
         ϵ = zeros(Float32,nz,ny,nx)
         η = zeros(Float32,nz,ny,nx)
     else
-        ϵ = Float32[]
-        η = Float32[]
+        ϵ = Array{Float32}(undef,0,0,0)
+        η = Array{Float32}(undef,0,0,0)
     end
     
     b = ones(Float32,nz,ny,nx)
