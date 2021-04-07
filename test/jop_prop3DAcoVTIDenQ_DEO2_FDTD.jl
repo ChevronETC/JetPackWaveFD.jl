@@ -155,8 +155,7 @@ end
     close(F)
 end
 
-#=
-@testset "JopProp3DAcoVTIDenQ_DEO2_FDTD -- analytic, direct, for model type $modeltype, interpmethod=$interpmethod" for modeltype in ("vϵη","v"), interpmethod in (:linear,:hicks)
+@test_skip @testset "JopProp3DAcoVTIDenQ_DEO2_FDTD -- analytic, direct, for model type $modeltype, interpmethod=$interpmethod" for modeltype in ("vϵη","v"), interpmethod in (:linear,:hicks)
     z,y,x,dz,dy,dx,dtrec,dtmod,tmax,sz,sy,sx,c = 2000.0,500.0,2500.0,40.0,40.0,40.0,0.016,0.004,2.0,1000.0,250.0,20.0,1500.0
     nz,ny,nx,nt = round(Int,z/dz)+1,round(Int,y/dy)+1,round(Int,x/dx)+1,round(Int,tmax/dtrec)+1
 
@@ -187,7 +186,7 @@ end
                 end
             end
             u_ana[:,iz,iy,ix] = irfft(U,nt_pad)[1:nt]
-            printfmt("{:.2f}", ((ix-1)*ny*nz+(iy-1)*nz+iz-1)/(nz*ny*nx)*100))
+            printfmt("{:.2f}", ((ix-1)*ny*nz+(iy-1)*nz+iz-1)/(nz*ny*nx)*100)
         end
         u_ana
     end
@@ -269,4 +268,3 @@ end
     close(M)
     @info "be patient, the garbage collection is probably deleting large scratch-files"
 end
-=#

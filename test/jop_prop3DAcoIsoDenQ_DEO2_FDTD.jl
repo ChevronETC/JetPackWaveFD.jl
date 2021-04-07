@@ -21,8 +21,22 @@ function make_op(interpmethod, modeltype, fs; comptype = Float32)
 
     wavelet = WaveletCausalRicker(f=5.0)
 
-    b = ones(Float32,nz,ny,nx)
-    v = 1500 .* ones(Float32,nz,ny,nx)
+    b = Float32(1)    .* ones(Float32,nz,ny,nx)
+    v = Float32(1500) .* ones(Float32,nz,ny,nx)
+
+    local m
+    if modeltype == WaveFD.Prop3DAcoIsoDenQ_DEO2_FDTD_Model_V
+        kwargs = (b = b, )
+        m = reshape(v, nz, ny, nx, 1)
+    elseif modeltype == WaveFD.Prop3DAcoIsoDenQ_DEO2_FDTD_Model_VB
+        kwargs = (nz = nz, ny = ny, nx = nx)
+        m = zeros(Float32, nz, ny, nx, 2)
+        m[:,:,:,1] .= v
+        m[:,:,:,2] .= b
+    elseif modeltype == WaveFD.Prop3DAcoIsoDenQ_DEO2_FDTD_Model_B
+        kwargs = (v = v, )
+        m = reshape(b, nz, ny, nx, 1)
+    end
 
     local m
     if modeltype == WaveFD.Prop3DAcoIsoDenQ_DEO2_FDTD_Model_V
@@ -161,8 +175,7 @@ end
     close(F)
 end
 
-#=
-@testset "JopProp3DAcoIsoDenQ_DEO2_FDTD -- analytic, direct, interpmethod=$interpmethod" for interpmethod in (:hicks,:linear)
+@test_skip @testset "JopProp3DAcoIsoDenQ_DEO2_FDTD -- analytic, direct, interpmethod=$interpmethod" for interpmethod in (:hicks,:linear)
     z,y,x,dz,dy,dx,dtrec,dtmod,tmax,sz,sy,sx,c = 2000.0,500.0,2500.0,40.0,40.0,40.0,0.016,0.004,2.0,1000.0,250.0,20.0,1500.0
     nz,ny,nx,nt = round(Int,z/dz)+1,round(Int,y/dy)+1,round(Int,x/dx)+1,round(Int,tmax/dtrec)+1
 
@@ -261,4 +274,5 @@ end
 
     close(M)
 end
-=#
+
+nothing

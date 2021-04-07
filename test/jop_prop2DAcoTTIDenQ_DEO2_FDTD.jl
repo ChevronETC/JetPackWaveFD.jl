@@ -153,8 +153,7 @@ end
     close(F)
 end
 
-#=
-@testset "JopProp2DAcoTTIDenQ_DEO2_FDTD -- analytic, direct, for model type $modeltype, interpmethod=$interpmethod" for modeltype in ("vϵη","v"), interpmethod in (:linear,:hicks)
+@test_skip @testset "JopProp2DAcoTTIDenQ_DEO2_FDTD -- analytic, direct, for model type $modeltype, interpmethod=$interpmethod" for modeltype in ("vϵη","v"), interpmethod in (:linear,:hicks)
     z,x,dz,dx,dtrec,dtmod,t,sz,sx,c = 0.5,1.0,0.02,0.02,0.004,0.0004,1.0,0.25,0.02,1.5
     nz,nx,ntrec = round(Int,z/dz)+1,round(Int,x/dx)+1,round(Int,t/dtrec)+1
 
@@ -184,7 +183,7 @@ end
                 end
             end
             u_ana[:,iz,ix] = irfft(U,nt_pad)[1:ntrec]
-            printfmt("{:.2f}\r", ((ix-1)*nz+iz-1)/((nz-1)*(nx-1))*100))
+            printfmt("{:.2f}\r", ((ix-1)*nz+iz-1)/((nz-1)*(nx-1))*100)
         end
         u_ana
     end
@@ -272,4 +271,3 @@ end
 
     close(M)
 end
-=#

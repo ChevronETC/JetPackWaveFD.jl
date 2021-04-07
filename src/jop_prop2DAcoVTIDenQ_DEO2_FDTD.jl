@@ -1,8 +1,8 @@
 function JetProp2DAcoVTIDenQ_DEO2_FDTD(;
-        v = Float32[],
-        b = Float32[],
-        ϵ = Float32[],
-        η = Float32[],
+        v::Array{Float32,2} = ones(Float32,0,0),
+        b::Array{Float32,2} = ones(Float32,0,0),
+        ϵ::Array{Float32,2} = ones(Float32,0,0),
+        η::Array{Float32,2} = ones(Float32,0,0),
         f = 0.85,
         srcfieldfile = joinpath(tempdir(), "field-$(uuid4()).bin"),
         comptype = nothing,
@@ -38,6 +38,7 @@ function JetProp2DAcoVTIDenQ_DEO2_FDTD(;
         imgcondition = "standard",
         nthreads = Sys.CPU_THREADS,
         reportinterval = 500)
+
     # active and passive earth model properties.  The active set is in the model-space
     active_modelset = Dict{String,Int}()
     passive_modelset = Dict{String,Array{Float32,2}}()
@@ -103,7 +104,7 @@ function JetProp2DAcoVTIDenQ_DEO2_FDTD(;
     C = WaveFD.comptype(comptype, Float32)[1]
     compressor = Dict{String,WaveFD.Compressor{Float32,Float32,C,2}}()
 
-    # we need to serialize for the data, but not for the linearization
+    # we need to serialize "pold" for the data but, not (necessarily) for the linearization
     _active_wavefields = "pold" ∈ active_wavefields ? active_wavefields : [active_wavefields;"pold"]
 
     for active_wavefield in _active_wavefields
@@ -433,19 +434,22 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
         qMin = kwargs[:qMin],
         qInterior = kwargs[:qInterior])
 
-    # wave-fields
+    # wavefields
     wavefields = Dict("pcur"=>WaveFD.PCur(p), "pold"=>WaveFD.POld(p), "pspace"=>WaveFD.PSpace(p), "mcur"=>WaveFD.MCur(p), "mold"=>WaveFD.MOld(p), "mspace"=>WaveFD.MSpace(p))
 
-    # earth model
+    # ginsu'd earth model
     model_ginsu = Dict("v"=>WaveFD.V(p), "b"=>WaveFD.B(p), "ϵ"=>WaveFD.Eps(p), "η"=>WaveFD.Eta(p), "f"=>WaveFD.F(p))
 
     # ginsu'd earth model (active-set)
     for prop in keys(kwargs[:active_modelset])
         sub!(model_ginsu[prop], kwargs[:ginsu], @view(m[:,:,kwargs[:active_modelset][prop]]), extend=true)
     end
+    # ginsu'd earth model (passive-set)
     for prop in keys(kwargs[:passive_modelset])
         sub!(model_ginsu[prop], kwargs[:ginsu], kwargs[:passive_modelset][prop], extend=true)
     end
+
+    # TODO why no ginsu for f?
     model_ginsu["f"] .= kwargs[:f]
 
     ginsu_interior_range = interior(kwargs[:ginsu])
@@ -493,9 +497,7 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
         for active_wavefield in active_wavefields
             filename = "$(kwargs[:srcfieldfile])-$(active_wavefield)"
             try
-                if isfile(filename) == true
-                    rm(filename)
-                end
+                isfile(filename) && rm(filename)
                 iofield[active_wavefield] = open(filename, "w")
             catch
                 @info "Unable to open $(filename) on proc $(myid()) - $(gethostname())"
@@ -513,7 +515,8 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
     set_zero_subnormals(true)
     for it = 1:ntmod_wav
         if kwargs[:reportinterval] != 0 && (it % kwargs[:reportinterval] == 0 || it == ntmod_wav)
-            JopProp2DAcoVTIDenQ_DEO2_FDTD_write_history_nl(kwargs[:ginsu], it, ntmod_wav, time()-time1, cumtime_io, cumtime_ex, cumtime_pr, wavefields["pcur"], d)
+            JopProp2DAcoVTIDenQ_DEO2_FDTD_write_history_nl(kwargs[:ginsu], it, ntmod_wav, time()-time1, 
+                cumtime_io, cumtime_ex, cumtime_pr, wavefields["pcur"], d)
         end
 
         # propagate and wavefield swap
@@ -539,11 +542,11 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
             if kwargs[:srcfieldfile] != ""
                 cumtime_io += @elapsed for active_wavefield in active_wavefields
                     if kwargs[:isinterior]
-                        WaveFD.compressedwrite(iofield[active_wavefield], kwargs[:compressor][active_wavefield], div(it-1,itskip)+1,
-                            wavefields[active_wavefield], ginsu_interior_range)
+                        WaveFD.compressedwrite(iofield[active_wavefield], kwargs[:compressor][active_wavefield], 
+                            div(it-1,itskip)+1, wavefields[active_wavefield], ginsu_interior_range)
                     else
-                        WaveFD.compressedwrite(iofield[active_wavefield], kwargs[:compressor][active_wavefield], div(it-1,itskip)+1,
-                            wavefields[active_wavefield])
+                        WaveFD.compressedwrite(iofield[active_wavefield], kwargs[:compressor][active_wavefield], 
+                            div(it-1,itskip)+1, wavefields[active_wavefield])
                     end
                 end
             end
@@ -614,20 +617,21 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_df!(δd::AbstractArray, δm::AbstractArra
         qMin = kwargs[:qMin],
         qInterior = kwargs[:qInterior])
 
-    # wave-fields
+    # wavefields
     pcur,pold = WaveFD.PCur(p),WaveFD.POld(p)
 
-    # earth model
-    earth_ginsu = Dict("v"=>WaveFD.V(p), "b"=>WaveFD.B(p), "ϵ"=>WaveFD.Eps(p), "η"=>WaveFD.Eta(p), "f"=>WaveFD.F(p))
+    # ginsu'd earth model
+    model_ginsu = Dict("v"=>WaveFD.V(p), "b"=>WaveFD.B(p), "ϵ"=>WaveFD.Eps(p), "η"=>WaveFD.Eta(p), "f"=>WaveFD.F(p))
 
     # ginsu'd earth model (active-set)
     for prop in keys(kwargs[:active_modelset])
-        sub!(earth_ginsu[prop], kwargs[:ginsu], @view(kwargs[:mₒ][:,:,kwargs[:active_modelset][prop]]), extend=true)
+        sub!(model_ginsu[prop], kwargs[:ginsu], @view(kwargs[:mₒ][:,:,kwargs[:active_modelset][prop]]), extend=true)
     end
+    # ginsu'd earth model (passive-set)
     for prop in keys(kwargs[:passive_modelset])
-        sub!(earth_ginsu[prop], kwargs[:ginsu], kwargs[:passive_modelset][prop], extend=true)
+        sub!(model_ginsu[prop], kwargs[:ginsu], kwargs[:passive_modelset][prop], extend=true)
     end
-    earth_ginsu["f"] .= kwargs[:f]
+    model_ginsu["f"] .= kwargs[:f]
 
     δm_ginsu = Dict{String,Array{Float32,2}}()
     for prop in keys(kwargs[:active_modelset])
@@ -637,7 +641,7 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_df!(δd::AbstractArray, δm::AbstractArra
     ginsu_interior_range = interior(kwargs[:ginsu])
 
     # pre-compute receiver interpolation coefficients
-    local iz,ix,c
+    local iz, ix, c
     if kwargs[:interpmethod] == :hicks
         iz, ix, c = WaveFD.hickscoeffs(kwargs[:dz], kwargs[:dx], z0_ginsu, x0_ginsu, nz_ginsu, nx_ginsu, kwargs[:rz], kwargs[:rx])
     else
@@ -685,11 +689,11 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_df!(δd::AbstractArray, δm::AbstractArra
             # read source field from disk
             cumtime_io += @elapsed for active_wavefield in kwargs[:active_wavefields]
                 if kwargs[:isinterior]
-                    WaveFD.compressedread!(iofields[active_wavefield], kwargs[:compressor][active_wavefield], div(it-1,itskip)+1,
-                        wavefields[active_wavefield], ginsu_interior_range)
+                    WaveFD.compressedread!(iofields[active_wavefield], kwargs[:compressor][active_wavefield],
+                        div(it-1,itskip)+1, wavefields[active_wavefield], ginsu_interior_range)
                 else
-                    WaveFD.compressedread!(iofields[active_wavefield], kwargs[:compressor][active_wavefield], div(it-1,itskip)+1,
-                        wavefields[active_wavefield])
+                    WaveFD.compressedread!(iofields[active_wavefield], kwargs[:compressor][active_wavefield],
+                        div(it-1,itskip)+1, wavefields[active_wavefield])
                 end
             end
 
@@ -735,21 +739,21 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
         qMin = kwargs[:qMin],
         qInterior = kwargs[:qInterior])
 
-    # wave-fields
+    # wavefields
     pcur,pold = WaveFD.PCur(p),WaveFD.POld(p)
 
     # ginsu'd earth model
-    earth_ginsu = Dict("v"=>WaveFD.V(p), "b"=>WaveFD.B(p), "ϵ"=>WaveFD.Eps(p), "η"=>WaveFD.Eta(p), "f"=>WaveFD.F(p))
+    model_ginsu = Dict("v"=>WaveFD.V(p), "b"=>WaveFD.B(p), "ϵ"=>WaveFD.Eps(p), "η"=>WaveFD.Eta(p), "f"=>WaveFD.F(p))
 
-    # active model-set
+    # ginsu'd earth model (active-set)
     for prop in keys(kwargs[:active_modelset])
-        sub!(earth_ginsu[prop], kwargs[:ginsu], @view(kwargs[:mₒ][:,:,kwargs[:active_modelset][prop]]), extend=true)
+        sub!(model_ginsu[prop], kwargs[:ginsu], @view(kwargs[:mₒ][:,:,kwargs[:active_modelset][prop]]), extend=true)
     end
-    # passive model-set
+    # ginsu'd earth model (passive-set)
     for prop in keys(kwargs[:passive_modelset])
-        sub!(earth_ginsu[prop], kwargs[:ginsu], kwargs[:passive_modelset][prop], extend=true)
+        sub!(model_ginsu[prop], kwargs[:ginsu], kwargs[:passive_modelset][prop], extend=true)
     end
-    earth_ginsu["f"] .= kwargs[:f]
+    model_ginsu["f"] .= kwargs[:f]
 
     δm_ginsu = Dict{String,Array{Float32,2}}()
     for prop in keys(kwargs[:active_modelset])
@@ -769,7 +773,7 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
         for jx = 1:size(c[i], 2), jz = 1:size(c[i], 1)
             kz = iz[i][jz]
             kx = ix[i][jx]
-            c[i][jz,jx] *= kwargs[:dtmod]^2 * earth_ginsu["v"][kz,kx]^2 / earth_ginsu["b"][kz,kx]
+            c[i][jz,jx] *= kwargs[:dtmod]^2 * model_ginsu["v"][kz,kx]^2 / model_ginsu["b"][kz,kx]
         end
     end
     blks = WaveFD.source_blocking(nz_ginsu, nx_ginsu, kwargs[:nbz_inject], kwargs[:nbx_inject], iz, ix, c)
@@ -805,7 +809,8 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
     set_zero_subnormals(true)
     for it = ntmod:-1:1
         if kwargs[:reportinterval] != 0 && (it % kwargs[:reportinterval] == 0 || it == ntmod)
-            JopProp2DAcoVTIDenQ_DEO2_FDTD_write_history_ln(kwargs[:ginsu], it, ntmod, time()-time1, cumtime_io, cumtime_ex, cumtime_im, cumtime_pr, pcur, δdinterp, "adjoint")
+            JopProp2DAcoVTIDenQ_DEO2_FDTD_write_history_ln(kwargs[:ginsu], it, ntmod, time()-time1,
+                cumtime_io, cumtime_ex, cumtime_im, cumtime_pr, pcur, δdinterp, "adjoint")
         end
 
         # propagate and wavefield swap
@@ -819,11 +824,11 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
             # read source field from disk
             cumtime_io += @elapsed for active_wavefield in kwargs[:active_wavefields]
                 if kwargs[:isinterior]
-                    WaveFD.compressedread!(iofields[active_wavefield], kwargs[:compressor][active_wavefield], div(it-1,itskip)+1,
-                        wavefields[active_wavefield], ginsu_interior_range)
+                    WaveFD.compressedread!(iofields[active_wavefield], kwargs[:compressor][active_wavefield],
+                        div(it-1,itskip)+1, wavefields[active_wavefield], ginsu_interior_range)
                 else
-                    WaveFD.compressedread!(iofields[active_wavefield], kwargs[:compressor][active_wavefield], div(it-1,itskip)+1,
-                        wavefields[active_wavefield])
+                    WaveFD.compressedread!(iofields[active_wavefield], kwargs[:compressor][active_wavefield],
+                        div(it-1,itskip)+1, wavefields[active_wavefield])
                 end
             end
 
@@ -832,7 +837,8 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
         end
     end
     set_zero_subnormals(false)
-    JopProp2DAcoVTIDenQ_DEO2_FDTD_stats(kwargs[:stats], kwargs[:ginsu], ntmod, time()-time1, cumtime_io, cumtime_ex, cumtime_im)
+    JopProp2DAcoVTIDenQ_DEO2_FDTD_stats(kwargs[:stats], kwargs[:ginsu], ntmod, time()-time1,
+        cumtime_io, cumtime_ex, cumtime_im)
 
     # undo ginsu
     for prop in keys(kwargs[:active_modelset])
@@ -904,7 +910,7 @@ end
 
 function Base.close(jet::Jet{D,R,typeof(JopProp2DAcoVTIDenQ_DEO2_FDTD_f!)}) where {D,R}
     rm("$(state(jet).srcfieldfile)-pold", force=true)
-    rm("$(state(jet).srcfieldfile)-mold", force=true)
     rm("$(state(jet).srcfieldfile)-pspace", force=true)
+    rm("$(state(jet).srcfieldfile)-mold", force=true)
     rm("$(state(jet).srcfieldfile)-mspace", force=true)
 end
