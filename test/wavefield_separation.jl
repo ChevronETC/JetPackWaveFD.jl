@@ -57,8 +57,8 @@ function makeF(; dim::Int=2, physics::String="ISO", imgcondition::String="standa
 
     elseif dim == 2 && physics == "VTI"
         b = 0.001f0 .* ones(Float32,nz,nx)
-        ϵ = 0.1 .* ones(Float32,nz,nx)
-        η = 0.2 .* ones(Float32,nz,nx)
+        ϵ = 0.1f0 .* ones(Float32,nz,nx)
+        η = 0.2f0 .* ones(Float32,nz,nx)
 
         JopNlProp2DAcoVTIDenQ_DEO2_FDTD(; b = b, ϵ = ϵ, η = η,  
             comptype = UInt32, compscale = 1e-1,
@@ -69,9 +69,9 @@ function makeF(; dim::Int=2, physics::String="ISO", imgcondition::String="standa
 
     elseif dim == 2 && physics == "TTI"
         b = 0.001f0 .* ones(Float32,nz,nx)
-        ϵ = 0.1 .* ones(Float32,nz,nx)
-        η = 0.2 .* ones(Float32,nz,nx)
-        θ = (π/8) .* ones(Float32,nz,nx)
+        ϵ = 0.1f0 .* ones(Float32,nz,nx)
+        η = 0.2f0 .* ones(Float32,nz,nx)
+        θ = Float32(π/8) .* ones(Float32,nz,nx)
 
         JopNlProp2DAcoTTIDenQ_DEO2_FDTD(; b = b, ϵ = ϵ, η = η, θ = θ, 
             comptype = UInt32, compscale = 1e-1,
@@ -92,8 +92,8 @@ function makeF(; dim::Int=2, physics::String="ISO", imgcondition::String="standa
 
     elseif dim == 3 && physics == "VTI"
         b = 0.001f0 .* ones(Float32,nz,ny,nx)
-        ϵ = 0.1 .* ones(Float32,nz,ny,nx)
-        η = 0.2 .* ones(Float32,nz,ny,nx)
+        ϵ = 0.1f0 .* ones(Float32,nz,ny,nx)
+        η = 0.2f0 .* ones(Float32,nz,ny,nx)
 
         JopNlProp3DAcoVTIDenQ_DEO2_FDTD(; b = b, ϵ = ϵ, η = η,  
             comptype = UInt32, compscale = 1e-1,
@@ -104,10 +104,10 @@ function makeF(; dim::Int=2, physics::String="ISO", imgcondition::String="standa
 
     elseif dim == 3 && physics == "TTI"
         b = 0.001f0 .* ones(Float32,nz,ny,nx)
-        ϵ = 0.1 .* ones(Float32,nz,ny,nx)
-        η = 0.2 .* ones(Float32,nz,ny,nx)
-        θ = (π/8) .* ones(Float32,nz,ny,nx)
-        ϕ = (π/6) .* ones(Float32,nz,ny,nx)
+        ϵ = 0.1f0 .* ones(Float32,nz,ny,nx)
+        η = 0.2f0 .* ones(Float32,nz,ny,nx)
+        θ = Float32(π/8) .* ones(Float32,nz,ny,nx)
+        ϕ = Float32(π/6) .* ones(Float32,nz,ny,nx)
 
         JopNlProp3DAcoTTIDenQ_DEO2_FDTD(; b = b, ϵ = ϵ, η = η, θ = θ, ϕ = ϕ, 
             comptype = UInt32, compscale = 1e-1,
@@ -127,18 +127,11 @@ end
         opFwi = makeF(;dim=2, physics=physics, imgcondition="FWI");
         opRtm = makeF(;dim=2, physics=physics, imgcondition="RTM");
 
-        vw = 1500 .* ones(Float32,nz,nx); # water velocity model
-        va = 1500 .* ones(Float32,nz,nx);
-        vb = 1505 .* ones(Float32,nz,nx);
-        va[div(nz,2):end,:] .= 2500;
-        vb[div(nz,2):end,:] .= 2500;
-
-        # VTI and TTI operators take 3D array for model
-        if physics != "ISO"
-            vw = reshape(vw,(nz,nx,1))
-            va = reshape(va,(nz,nx,1))
-            vb = reshape(vb,(nz,nx,1))
-        end
+        vw = 1500 .* ones(domain(opStd)); # water velocity model
+        va = 1500 .* ones(domain(opStd));
+        vb = 1505 .* ones(domain(opStd));
+        va[div(nz,2):end,:,:] .= 2500;
+        vb[div(nz,2):end,:,:] .= 2500;
 
         d1a = opStd * va;
         d1w = opStd * vw;
@@ -167,24 +160,16 @@ end
         J4 = jacobian!(opRtm,vb);
         g4 = J4' * r4;
 
-        # VTI and TTI operators take 3D array for model
-        if physics != "ISO"
-            g1 = reshape(g1,(nz,nx))
-            g2 = reshape(g2,(nz,nx))
-            g3 = reshape(g3,(nz,nx))
-            g4 = reshape(g4,(nz,nx))
-        end
-
         close(opStd)
         close(opFwi)
         close(opRtm)
         
         # remove pixels near source to eliminate very large amplitudes
         nzero = 5
-        g1[1:nzero,:] .= 0
-        g2[1:nzero,:] .= 0
-        g3[1:nzero,:] .= 0
-        g4[1:nzero,:] .= 0
+        g1[1:nzero,:,:] .= 0
+        g2[1:nzero,:,:] .= 0
+        g3[1:nzero,:,:] .= 0
+        g4[1:nzero,:,:] .= 0
 
         # FWI gradients differ
         @test norm(g1 .- g2) > eps(Float32) 
@@ -197,7 +182,7 @@ end
         @test sum(sign.(g2)) > sum(sign.(g1))
 
         # cc(g_RTM,highpass,g_RTM) > cc(g_STD,highpass,g_STD)
-        op = JopLaplacian(JetSpace(Float32,nz,nx))
+        op = JopLaplacian(JetSpace(Float32,nz,nx)) ∘ JopReshape(domain(opStd), JetSpace(Float32,nz,nx))
         h3 = op * g3;
         h4 = op * g4;
         cc3 = dot(abs.(g3[:]),abs.(h3[:])) / sqrt(dot(abs.(g3[:]),abs.(g3[:])) * dot(abs.(h3[:]),abs.(h3[:])))
@@ -214,18 +199,11 @@ end
         opFwi = makeF(;dim=3, physics=physics, imgcondition="FWI");
         opRtm = makeF(;dim=3, physics=physics, imgcondition="RTM");
 
-        vw = 1500 .* ones(Float32,nz,ny,nx); # water velocity model
-        va = 1500 .* ones(Float32,nz,ny,nx);
-        vb = 1505 .* ones(Float32,nz,ny,nx);
-        va[div(nz,2):end,:,:] .= 2500;
-        vb[div(nz,2):end,:,:] .= 2500;
-
-        # VTI and TTI operators take 4D array for model
-        if physics != "ISO"
-            vw = reshape(vw,(nz,ny,nx,1))
-            va = reshape(va,(nz,ny,nx,1))
-            vb = reshape(vb,(nz,ny,nx,1))
-        end
+        vw = 1500 .* ones(domain(opStd)); # water velocity model
+        va = 1500 .* ones(domain(opStd));
+        vb = 1505 .* ones(domain(opStd));
+        va[div(nz,2):end,:,:,:] .= 2500;
+        vb[div(nz,2):end,:,:,:] .= 2500;
 
         d1a = opStd * va;
         d1w = opStd * vw;
@@ -254,24 +232,16 @@ end
         J4 = jacobian!(opRtm,vb);
         g4 = J4' * r4;
 
-        # VTI and TTI operators take 4D array for model
-        if physics != "ISO"
-            g1 = reshape(g1,(nz,ny,nx))
-            g2 = reshape(g2,(nz,ny,nx))
-            g3 = reshape(g3,(nz,ny,nx))
-            g4 = reshape(g4,(nz,ny,nx))
-        end
-
         close(opStd)
         close(opFwi)
         close(opRtm)
         
         # remove pixels near source to eliminate very large amplitudes there
         nzero = 5
-        g1[1:nzero,:,:] .= 0
-        g2[1:nzero,:,:] .= 0
-        g3[1:nzero,:,:] .= 0
-        g4[1:nzero,:,:] .= 0
+        g1[1:nzero,:,:,:] .= 0
+        g2[1:nzero,:,:,:] .= 0
+        g3[1:nzero,:,:,:] .= 0
+        g4[1:nzero,:,:,:] .= 0
 
        # FWI gradients differ
        @test norm(g1 .- g2) > eps(Float32) 
@@ -284,7 +254,7 @@ end
        @test sum(sign.(g2)) > sum(sign.(g1))
 
        # cc(g_RTM,highpass,g_RTM) > cc(g_STD,highpass,g_STD)
-       op = JopLaplacian(JetSpace(Float32,nz,ny,nx))
+       op = JopLaplacian(JetSpace(Float32,nz,ny,nx)) ∘ JopReshape(domain(opStd), JetSpace(Float32,nz,ny,nx))
        h3 = op * g3;
        h4 = op * g4;
        cc3 = dot(abs.(g3[:]),abs.(h3[:])) / sqrt(dot(abs.(g3[:]),abs.(g3[:])) * dot(abs.(h3[:]),abs.(h3[:])))
