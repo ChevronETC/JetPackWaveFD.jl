@@ -50,6 +50,7 @@ function JetProp3DAcoTTIDenQ_DEO2_FDTD(;
         reportinterval = 500)
 
     @info "line $(@__LINE__) in $(@__FILE__)"
+    sleep(1)
     # active and passive earth model properties.  The active set is in the model-space
     active_modelset = Dict{String,Int}()
     passive_modelset = Dict{String,Array{Float32,3}}()
@@ -466,7 +467,11 @@ Defaults for arguments are shown inside square brackets.
 See also: `Ginsu`, `WaveletSine`, `WaveletRicker`, `WaveletMinPhaseRicker`, `WaveletDerivRicker`, 
     `WaveletCausalRicker`, `WaveletOrmsby`, `WaveletMinPhaseOrmsby` 
 """
-JopNlProp3DAcoTTIDenQ_DEO2_FDTD(;kwargs...) = JopNl(JetProp3DAcoTTIDenQ_DEO2_FDTD(;kwargs...))
+function JopNlProp3DAcoTTIDenQ_DEO2_FDTD(;kwargs...)
+    @info "line $(@__LINE__) in $(@__FILE__)"
+    sleep(1)
+    JopNl(JetProp3DAcoTTIDenQ_DEO2_FDTD(;kwargs...))
+end
 
 @doc (@doc JopNlProp3DAcoTTIDenQ_DEO2_FDTD)
 JopLnProp3DAcoTTIDenQ_DEO2_FDTD(; m₀, kwargs...) = JopLn(JetProp3DAcoTTIDenQ_DEO2_FDTD(;kwargs...), m₀)
