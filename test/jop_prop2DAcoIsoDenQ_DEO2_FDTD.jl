@@ -157,6 +157,14 @@ end
     close(F)
 end
 
+@testset "JopProp2DAcoIsoDenQ_DEO2_FDTD -- srcillum, C=$C, modeltype=$modeltype" for C in (Float32, UInt32), modeltype in modeltypes
+    m₀, F = make_op(:hicks, modeltype, false, comptype = C)
+    d₁ = F * m₀
+    s1 = srcillum(J)
+    close(F)
+end
+
+
 #=
 @testset "JopProp2DAcoIsoDenQ_DEO2_FDTD -- analytic, direct, interpmethod=$interpmethod" for interpmethod in (:hicks, :linear)
     z,x,dz,dx,dtrec,dtmod,t,sz,sx,c = 0.5,1.0,0.02,0.02,0.004,0.0004,1.0,0.25,0.02,1.5
