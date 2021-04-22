@@ -159,11 +159,14 @@ end
 
 @testset "JopProp2DAcoIsoDenQ_DEO2_FDTD -- srcillum, C=$C, modeltype=$modeltype" for C in (Float32, UInt32), modeltype in modeltypes
     m₀, F = make_op(:hicks, modeltype, false, comptype = C)
-    d₁ = F * m₀
-    s1 = srcillum(J)
+    d₁ = F * m₀;
+    J = jacobian(F, m₀);
+    s1 = srcillum(F, m₀);
+    s2 = srcillum(J);
     close(F)
+    @test s1 ≈ s2
+    @test maximum(s1) > 0
 end
-
 
 #=
 @testset "JopProp2DAcoIsoDenQ_DEO2_FDTD -- analytic, direct, interpmethod=$interpmethod" for interpmethod in (:hicks, :linear)

@@ -155,6 +155,17 @@ end
     close(F)
 end
 
+@testset "JopProp2DAcoVTIDenQ_DEO2_FDTD -- srcillum, C=$C, modeltype=$modeltype" for C in (Float32, UInt32), modeltype in ("vϵη", "v")
+    m₀, F = make_op(:hicks, modeltype, false, comptype = C)
+    d₁ = F * m₀;
+    J = jacobian(F, m₀);
+    s1 = srcillum(F, m₀);
+    s2 = srcillum(J);
+    close(F)
+    @test s1 ≈ s2
+    @test maximum(s1) > 0
+end
+
 #=
 @testset "JopProp3DAcoVTIDenQ_DEO2_FDTD -- analytic, direct, for model type $modeltype, interpmethod=$interpmethod" for modeltype in ("vϵη","v"), interpmethod in (:linear,:hicks)
     z,y,x,dz,dy,dx,dtrec,dtmod,tmax,sz,sy,sx,c = 2000.0,500.0,2500.0,40.0,40.0,40.0,0.016,0.004,2.0,1000.0,250.0,20.0,1500.0
