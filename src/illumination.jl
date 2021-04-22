@@ -1,4 +1,23 @@
 # Jets/WaveFD bridge
+
+# 2D source illumination
+function srcillum(filename::AbstractString, compressor::WaveFD.Compressor, interior::Bool, ::Type{T}, ginsu::Ginsu, nz::Int, nx::Int, ntrec::Int, nthreads::Int) where {T}
+    srcillum!(zeros(T, nz, nx), filename, compressor, ginsu, ntrec, nthreads)
+end
+
+function srcillum!(γ::AbstractArray{T,2}, filename::AbstractString, compressor::WaveFD.Compressor, interior::Bool, ginsu::Ginsu, ntrec::Int, nthreads::Int) where {T}
+    io = open(filename)
+    field_ginsu = zeros(T, size(ginsu, interior=interior))
+    for it = 1:ntrec
+        WaveFD.compressedread!(io, compressor, it, field_ginsu)
+        WaveFD.srcillum_helper(field_ginsu, nthreads)
+        super!(γ, ginsu, field_ginsu, accumulate=true, interior=interior)
+    end
+    close(io)
+    γ
+end
+
+# 3D source illumination
 function srcillum(filename::AbstractString, compressor::WaveFD.Compressor, interior::Bool, ::Type{T}, ginsu::Ginsu, nz::Int, ny::Int, nx::Int, ntrec::Int, nthreads::Int) where {T}
     srcillum!(zeros(T, nz, ny, nx), filename, compressor, interior, ginsu, ntrec, nthreads)
 end
@@ -15,21 +34,6 @@ function srcillum!(γ::AbstractArray{T,3}, filename::AbstractString, compressor:
     γ
 end
 
-function srcillum(filename::AbstractString, compressor::WaveFD.Compressor, interior::Bool, ::Type{T}, ginsu::Ginsu, nz::Int, nx::Int, ntrec::Int, nthreads::Int) where {T}
-	srcillum!(zeros(T, nz, nx), filename, compressor, ginsu, ntrec, nthreads)
-end
-
-function srcillum!(γ::AbstractArray{T,2}, filename::AbstractString, compressor::WaveFD.Compressor, interior::Bool, ginsu::Ginsu, ntrec::Int, nthreads::Int) where {T}
-    io = open(filename)
-    field_ginsu = zeros(T, size(ginsu, interior=interior))
-    for it = 1:ntrec
-        WaveFD.compressedread!(io, compressor, it, field_ginsu)
-        WaveFD.srcillum_helper(field_ginsu, nthreads)
-        super!(γ, ginsu, field_ginsu, accumulate=true, interior=interior)
-    end
-    close(io)
-    γ
-end
 
 @doc """
     srcillum(J)
@@ -52,8 +56,15 @@ for the location `m`.
 `srcillum!(y, J, m)` zeros the passed array `y` and then accumulates to the source 
 illumination from `J::Jop` at the location `m` into `y`.
 """
-srcillum(J::JopLn) = srcillum!(zeros(domain(J)), J)
-srcillum(J::Jop, m::AbstractArray) = srcillum!(zeros(domain(J)), J, m)
+function srcillum(J::JopLn) 
+    s = zeros(eltype(J), size(domain(J))[1:end-1])
+    srcillum!(s, J)
+end
+
+function srcillum(J::Jop, m::AbstractArray)
+    s = zeros(eltype(J), size(domain(J))[1:end-1])
+    srcillum!(s, J, m)
+end
 
 @doc (@doc srcillum(J))
 srcillum!(γ::AbstractArray, J::Jop) = srcillum!(γ, J, jet(J).mₒ)
