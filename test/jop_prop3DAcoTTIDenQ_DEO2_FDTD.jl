@@ -148,7 +148,7 @@ end
 end
 
 # note the compression is exercised on the second pass of F * m₀
-@testset "JopProp23AcoTTIDenQ_DEO2_FDTD -- serialization, modeltype=$modeltype, C=$C" for modeltype in ("vϵη", "v"), C in (Float32,UInt32)
+@testset "JopProp3DAcoTTIDenQ_DEO2_FDTD -- serialization, modeltype=$modeltype, C=$C" for modeltype in ("vϵη", "v"), C in (Float32,UInt32)
     m₀, F = make_op(modeltype, :hicks, false, comptype = C) 
     d₁ = F * m₀
     d₂ = F * m₀
