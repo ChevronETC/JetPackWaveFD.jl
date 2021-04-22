@@ -148,7 +148,7 @@ end
 end
 
 # note the compression is exercised on the second pass of F * m₀
-@testset "JopProp2DAcoTTIDenQ_DEO2_FDTD -- serialization, modeltype=$modeltype, C=$C" for modeltype in ("vϵη", "v"), C in (Float32,UInt32)
+@testset "JopProp23AcoTTIDenQ_DEO2_FDTD -- serialization, modeltype=$modeltype, C=$C" for modeltype in ("vϵη", "v"), C in (Float32,UInt32)
     m₀, F = make_op(modeltype, :hicks, false, comptype = C) 
     d₁ = F * m₀
     d₂ = F * m₀
@@ -157,7 +157,7 @@ end
     close(F)
 end
 
-@testset "JopProp2DAcoTTIDenQ_DEO2_FDTD -- srcillum, C=$C, modeltype=$modeltype" for C in (Float32, UInt32), modeltype in ("vϵη", "v")
+@testset "JopProp3DAcoTTIDenQ_DEO2_FDTD -- srcillum, C=$C, modeltype=$modeltype" for C in (Float32, UInt32), modeltype in ("vϵη", "v")
     m₀, F = make_op(:hicks, modeltype, false, comptype = C)
     d₁ = F * m₀;
     J = jacobian(F, m₀);
