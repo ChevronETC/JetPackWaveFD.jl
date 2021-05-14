@@ -1,6 +1,6 @@
 using Formatting, FFTW, Jets, JetPackWaveFD, LinearAlgebra, SpecialFunctions, Statistics, Test, WaveFD
 
-function make_op(modeltype, interpmethod, fs; v₀=1500, ϵ₀=0.2, η₀=0.4, comptype = Float32)
+function make_op(modeltype, interpmethod, fs; v₀=1500, ϵ₀=0.2, η₀=0.4, comptype = Float32, st = 0.0, wavelet = WaveletCausalRicker(f=5.0))
     nsponge = 10
     pad = 20
     nx = 60+2*pad
@@ -14,8 +14,6 @@ function make_op(modeltype, interpmethod, fs; v₀=1500, ϵ₀=0.2, η₀=0.4, c
     sz = dz
     rx = dx*[pad:nx-pad-1;]
     rz = 2*dz*ones(length(rx))
-
-    wavelet = WaveletCausalRicker(f=5.0)
 
     local ϵ,η
     if modeltype  == "v"
@@ -31,7 +29,7 @@ function make_op(modeltype, interpmethod, fs; v₀=1500, ϵ₀=0.2, η₀=0.4, c
 
     F = JopNlProp2DAcoTTIDenQ_DEO2_FDTD(b = b, f = 0.85, ϵ = ϵ, η = η, θ = θ, 
         z0 = zmin, x0 = xmin, dz = dz, dx = dx, 
-        sz = sz, sx = sx, rz = rz, rx = rx, 
+        sz = sz, sx = sx, st = st, rz = rz, rx = rx, 
         dtrec = dt, dtmod = dt, ntrec = nt, nsponge = nsponge, comptype = comptype, compscale = 1e-4,
         freqQ = 5.0, qMin = 0.1, qInterior = 100.0, wavelet = wavelet, freesurface = fs, 
         reportinterval = 0, interpmethod = interpmethod, isinterior = false)
@@ -91,6 +89,16 @@ end
     @test isa(s["%imaging"], Float64)
 
     close(F)
+end
+
+@testset "JopProp2DAcoTTIDenQ_DEO2_FDTD -- non-causal source injection" begin
+    wavelet = WaveletRicker(;f=5.0)
+    mₒ, F₁ = make_op(:hicks, "v", false; wavelet, st=-1.0)
+    mₒ, F₂ = make_op(:hicks, "v", false; wavelet, st=-2.0)
+
+    d₁ = F₁ * mₒ
+    d₂ = F₂ * mₒ
+    @test d₁ ≈ d₂
 end
 
 @testset "JopProp2DAcoTTIDenQ_DEO2_FDTD -- linearization, model type is $modeltype, interpmethod=$interpmethod, fs=$fs" for modeltype in ("vϵη","v"), interpmethod in (:hicks,:linear), fs in (true,false)

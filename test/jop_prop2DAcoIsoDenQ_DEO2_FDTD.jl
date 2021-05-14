@@ -2,7 +2,8 @@ using Formatting, FFTW, Jets, JetPackWaveFD, LinearAlgebra, SpecialFunctions, St
 
 modeltypes = (WaveFD.Prop2DAcoIsoDenQ_DEO2_FDTD_Model_V, WaveFD.Prop2DAcoIsoDenQ_DEO2_FDTD_Model_B, WaveFD.Prop2DAcoIsoDenQ_DEO2_FDTD_Model_VB)
 
-function make_op(interpmethod, modeltype, fs; comptype = Float32)
+function make_op(interpmethod, modeltype, fs; comptype = Float32, st = 0.0, wavelet = WaveletCausalRicker(f=5.0))
+    @show wavelet
     nsponge = 10
     pad = 20
     nx = 60+2*pad
@@ -15,8 +16,6 @@ function make_op(interpmethod, modeltype, fs; comptype = Float32)
     sz = dz
     rx = dx*[pad:nx-pad-1;]
     rz = 2*dz*ones(length(rx))
-
-    wavelet = WaveletCausalRicker(f=5.0)
 
     b = ones(Float32,nz,nx)
     v = 1500 .* ones(Float32,nz,nx)
@@ -36,7 +35,7 @@ function make_op(interpmethod, modeltype, fs; comptype = Float32)
     end
 
     F = JopNlProp2DAcoIsoDenQ_DEO2_FDTD(; kwargs...,
-        z0 = zmin, x0 = xmin, dx = dx, dz = dz, sx = sx, sz = sz, rx = rx, rz = rz,
+        z0 = zmin, x0 = xmin, dx = dx, dz = dz, sx = sx, sz = sz, st = st, rx = rx, rz = rz,
         dtrec = dt, dtmod = dt, ntrec = nt, nsponge = nsponge, comptype = comptype, compscale = 1e-4,
         freqQ = 5.0, qMin = 0.1, qInterior = 100.0, wavelet = wavelet, freesurface = fs, 
         reportinterval = 0, interpmethod = interpmethod, isinterior = false)
@@ -87,6 +86,16 @@ end
     @test isa(s["%imaging"], Float64)
 
     close(F)
+end
+
+@testset "JopProp2DAcoIsoDenQ_DEO2_FDTD -- non-causal source injection" begin
+    wavelet = WaveletRicker(;f=5.0)
+    mₒ, F₁ = make_op(:hicks, WaveFD.Prop2DAcoIsoDenQ_DEO2_FDTD_Model_V, false; wavelet, st=-1.0)
+    mₒ, F₂ = make_op(:hicks, WaveFD.Prop2DAcoIsoDenQ_DEO2_FDTD_Model_V, false; wavelet, st=-2.0)
+
+    d₁ = F₁ * mₒ
+    d₂ = F₂ * mₒ
+    @test d₁ ≈ d₂
 end
 
 @testset "JopProp2DAcoIsoDenQ_DEO2_FDTD -- linearization, interpmethod=$interpmethod, fs=$fs, modeltype=$modeltype" for interpmethod in (:linear,), fs in (false,), modeltype in modeltypes

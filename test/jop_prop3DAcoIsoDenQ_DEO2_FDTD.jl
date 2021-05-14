@@ -2,7 +2,7 @@ using Formatting, FFTW, Jets, JetPackWaveFD, LinearAlgebra, SpecialFunctions, St
 
 modeltypes = (WaveFD.Prop3DAcoIsoDenQ_DEO2_FDTD_Model_V, WaveFD.Prop3DAcoIsoDenQ_DEO2_FDTD_Model_B, WaveFD.Prop3DAcoIsoDenQ_DEO2_FDTD_Model_VB)
 
-function make_op(interpmethod, modeltype, fs; comptype = Float32)
+function make_op(interpmethod, modeltype, fs; comptype = Float32, st = 0.0, wavelet = WaveletCausalRicker(f=5.0))
     nsponge = 10
     pad = 20
     nx = 50+2*pad
@@ -18,8 +18,6 @@ function make_op(interpmethod, modeltype, fs; comptype = Float32)
     rz = [dz for iy = 1+pad:ny-pad, ix = 1+pad:nx-pad][:]
     ry = [(iy-1)*dy for iy = 1+pad:ny-pad, ix=1+pad:nx-pad][:]
     rx = [(ix-1)*dx for iy = 1+pad:ny-pad, ix=1+pad:nx-pad][:]
-
-    wavelet = WaveletCausalRicker(f=5.0)
 
     b = ones(Float32,nz,ny,nx)
     v = 1500 .* ones(Float32,nz,ny,nx)
@@ -40,7 +38,7 @@ function make_op(interpmethod, modeltype, fs; comptype = Float32)
 
     F = JopNlProp3DAcoIsoDenQ_DEO2_FDTD(; kwargs...,
         z0 = zmin, y0 = ymin, x0 = xmin, dz = dz, dy = dy, dx = dx, 
-        sz = sz, sy = sy, sx = sx, rz = rz, ry = ry, rx = rx, 
+        sz = sz, sy = sy, sx = sx, st = st, rz = rz, ry = ry, rx = rx, 
         dtrec = dt, dtmod = dt, ntrec = nt, nsponge = nsponge, comptype = comptype, compscale = 1e-4,
         freqQ = 5.0, qMin = 0.1, qInterior = 100.0, wavelet = wavelet, freesurface = fs, 
         reportinterval = 0, interpmethod = interpmethod, isinterior = false)
@@ -91,6 +89,16 @@ end
     @test isa(s["%imaging"], Float64)
 
     close(F)
+end
+
+@testset "JopProp3DAcoIsoDenQ_DEO2_FDTD -- non-causal source injection" begin
+    wavelet = WaveletRicker(;f=5.0)
+    mₒ, F₁ = make_op(:hicks, WaveFD.Prop3DAcoIsoDenQ_DEO2_FDTD_Model_V, false; wavelet, st=-1.0)
+    mₒ, F₂ = make_op(:hicks, WaveFD.Prop3DAcoIsoDenQ_DEO2_FDTD_Model_V, false; wavelet, st=-2.0)
+
+    d₁ = F₁ * mₒ
+    d₂ = F₂ * mₒ
+    @test d₁ ≈ d₂
 end
 
 @testset "JopProp3DAcoIsoDenQ_DEO2_FDTD -- linearization, interpmethod=$interpmethod, fs=$fs, modeltype=$modeltype" for interpmethod in (:linear,:hicks), fs in (true,false), modeltype in modeltypes

@@ -530,7 +530,7 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
         if it >= it0 && rem(it-1,itskip) == 0
             if length(d) > 0
                 # extract receiver data
-                cumtime_ex += @elapsed WaveFD.extractdata!(d, wavefields["pold"], div(it-1,itskip)+1, iz_rec, ix_rec, c_rec)
+                cumtime_ex += @elapsed WaveFD.extractdata!(d, wavefields["pold"], div(it-it0,itskip)+1, iz_rec, ix_rec, c_rec)
             end
 
             # scale spatial derivatives by v^2/b to make them temporal derivatives
