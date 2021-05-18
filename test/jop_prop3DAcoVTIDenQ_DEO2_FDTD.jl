@@ -1,6 +1,6 @@
 using Formatting, FFTW, Jets, JetPackWaveFD, LinearAlgebra, SpecialFunctions, Statistics, Test, WaveFD
 
-function make_op(modeltype, interpmethod, fs; v₀=1500, ϵ₀=0.2, η₀=0.4, comptype = Float32)
+function make_op(modeltype, interpmethod, fs; v₀=1500, ϵ₀=0.2, η₀=0.4, comptype = Float32, st = 0.0, wavelet = WaveletCausalRicker(f=5.0))
     nsponge = 10
     pad = 20
     nx = 50+2*pad
@@ -17,8 +17,6 @@ function make_op(modeltype, interpmethod, fs; v₀=1500, ϵ₀=0.2, η₀=0.4, c
     ry = [(iy-1)*dy for iy = 1+pad:ny-pad, ix=1+pad:nx-pad][:]
     rx = [(ix-1)*dx for iy = 1+pad:ny-pad, ix=1+pad:nx-pad][:]
 
-    wavelet = WaveletCausalRicker(f=5.0)
-
     local ϵ,η
     if modeltype  == "v"
         ϵ = zeros(Float32,nz,ny,nx)
@@ -32,7 +30,7 @@ function make_op(modeltype, interpmethod, fs; v₀=1500, ϵ₀=0.2, η₀=0.4, c
 
     F = JopNlProp3DAcoVTIDenQ_DEO2_FDTD(b = b, f = 0.85, ϵ = ϵ, η = η, 
         z0 = zmin, y0 = ymin, x0 = xmin, dz = dz, dy = dy, dx = dx, 
-        sz = sz, sy = sy, sx = sx, rz = rz, ry = ry, rx = rx, 
+        sz = sz, sy = sy, sx = sx, st = 0.0, rz = rz, ry = ry, rx = rx, 
         dtrec = dt, dtmod = dt, ntrec = nt, nsponge = nsponge, comptype = comptype, compscale = 1e-4,
         freqQ = 5.0, qMin = 0.1, qInterior = 100.0, wavelet = wavelet, freesurface = fs, 
         reportinterval = 0, interpmethod = interpmethod, isinterior = false)
@@ -92,6 +90,16 @@ end
     @test isa(s["%imaging"], Float64)
 
     close(F)
+end
+
+@testset "JopProp3DAcoVTIDenQ_DEO2_FDTD -- non-causal source injection" begin
+    wavelet = WaveletRicker(;f=5.0)
+    mₒ, F₁ = make_op(:hicks, "v", false; wavelet, st=-1.0)
+    mₒ, F₂ = make_op(:hicks, "v", false; wavelet, st=-2.0)
+
+    d₁ = F₁ * mₒ
+    d₂ = F₂ * mₒ
+    @test d₁ ≈ d₂
 end
 
 @testset "JopProp3DAcoVTIDenQ_DEO2_FDTD -- linearization, model type is $modeltype, interpmethod=$interpmethod, fs=$fs" for modeltype in ("vϵη","v"), interpmethod in (:linear,:hicks), fs in (true,false)
