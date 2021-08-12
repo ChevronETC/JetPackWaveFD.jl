@@ -377,6 +377,45 @@ JopLnProp2DAcoIsoDenQ_DEO2_FDTD(; v, kwargs...) = JopLn(JetProp2DAcoIsoDenQ_DEO2
 export JopNlProp2DAcoIsoDenQ_DEO2_FDTD
 export JopLnProp2DAcoIsoDenQ_DEO2_FDTD
 
+function JopProp2DAcoIsoDenQ_DEO2_FDTD_woverq(; nbz_cache=512, nbx_cache=8, nthreads = Sys.CPU_THREADS, kwargs...)
+    # make propagator
+    # ginsu view of earth model... ginsu is aware of the sponge
+
+    nz, nx = kwargs[:nz], kwargs[:nx]
+    nsponge = kwargs[:nsponge]
+    padz = kwargs[:padz]
+    nsponge_top = kwargs[:freesurface] ? 0 : nsponge
+    padz_top = kwargs[:freesurface] ? 0.0 : padz
+
+    
+    # type conversions
+    z0, x0, padz, padx = map(val->Float64(val), (kwargs[:z0], kwargs[:x0], kwargs[:padz], kwargs[:padx])) # used for computing integer grid locations for source injection
+    rz, rx = map(val->convert(Array{Float64}, val), (kwargs[:rz], kwargs[:rx]))
+    sz,sx,st = map(val->Float64[val...], (kwargs[:sz],kwargs[:sx],kwargs[:st]))
+    dz, dx, dtmod, freqQ, qMin, qInterior = map(val->Float32(val), (kwargs[:dz], kwargs[:dx], kwargs[:dtmod], kwargs[:dtrec], kwargs[:freqQ], kwargs[:qMin], kwargs[:qInterior])) #
+
+    ginsu = Ginsu((z0,x0), (dz,dx), (nz, nx), (sz,sx), (rz,rx), ((padz_top,padz),(padx,padx)), ((nsponge_top,nsponge),(nsponge,nsponge)), T=Float32, vector_width=1, stencilhalfwidth = kwargs[:freesurface] ? 4 : 0)
+    nz_ginsu,nx_ginsu = size(ginsu)
+    p = Prop2DAcoIsoDenQ_DEO2_FDTD(
+        nz = nz_ginsu, 
+        nx = nx_ginsu,
+        nbz = nbz_cache, 
+        nbx = nbx_cache,
+        dz = kwargs[:dz], 
+        dx = kwargs[:dx], 
+        dt = dtmod,
+        nsponge = kwargs[:nsponge],
+        nthreads = nthreads,
+        freesurface = kwargs[:freesurface],
+        freqQ = freqQ, 
+        qMin = qMin, 
+        qInterior = qInterior
+    )
+    # get wover q function
+    return WaveFD.DtOmegaInvQ(p)
+end
+export JopProp2DAcoIsoDenQ_DEO2_FDTD_woverq
+
 function JopProp2DAcoIsoDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::AbstractArray; kwargs...)
     # make propagator
     nz_ginsu,nx_ginsu = size(kwargs[:ginsu])
@@ -488,7 +527,7 @@ function JopProp2DAcoIsoDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
             WaveFD.injectdata!(wavefields["pspace"], blks_sou, wavelet_realization, it)
         end
 
-        if it >= it0 && rem(it-1,itskip) == 0
+        if it >= it0 && rem(it-1,itskip) == 0 
             if length(d) > 0
                 # extract receiver data
                 cumtime_ex += @elapsed WaveFD.extractdata!(d, wavefields["pold"], div(it-it0,itskip)+1, iz_rec, ix_rec, c_rec)
