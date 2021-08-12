@@ -99,6 +99,41 @@ end
     end
 end
 
+@testset "Ginsu 2D Array Src&Rec" begin
+    nz, nx = 100, 200
+    dz, dx = 10.0, 20.0
+    z0, x0 = 0.0, 0.0
+
+    sz, sx = [[10.0]], [[2000.0]]
+    rz, rx = [[0.0, 0.0]], [[0.0, 1990.0]]
+    padz, padx = 100.0, 200.0
+    ndamp = 10
+
+    ginsu = Ginsu((z0,x0), (dz,dx), (nz,nx), (sz,sx), (rz,rx), ((padz,padz),(padx,padx)), ((0,0),(ndamp,ndamp)), dims=(:z,:x), T=Float64)
+    @test lextents(ginsu, interior=false) == (-9:110,-19:124)
+    @test lextents(ginsu, interior=true) == (-9:110,-9:114)
+
+    map(i->@test(pextents(ginsu, interior=false)[i] ≈ (-100.0:10.0:1090.0,-400.0:20.0:2460.0)[i]), 1:2)
+    map(i->@test(pextents(ginsu, interior=true)[i] ≈ (-100.0:10.0:1090.0,-200.0:20.0:2260.0)[i]), 1:2)
+
+    for interior in (false, true), extend in (false, true)
+        x = rand(nz,nx)
+        z = zeros(nz,nx)
+
+        y = sub(ginsu, x, interior=interior, extend=extend)
+        test_ginsu_sub(ginsu, x, y, interior, extend)
+
+        super!(z, ginsu, y, interior=interior, accumulate=false)
+        test_ginsu_super(ginsu, x, z, interior)
+
+        super!(z, ginsu, y, interior=interior, accumulate=false)
+        test_ginsu_super(ginsu, x, z, interior)
+
+        super!(z, ginsu, y, interior=interior, accumulate=true)
+        test_ginsu_super(ginsu, 2x, z, interior)
+    end
+end
+
 @testset "Ginsu 3D" begin
     nz, ny, nx = 100, 30, 200
     dz, dy, dx = 10.0, 10.0, 20.0
@@ -106,6 +141,41 @@ end
 
     sz, sy, sx = [10.0], [150.0], [2000.0]
     rz, ry, rx = [0.0, 0.0], [0.0,270.0], [0.0, 1990.0]
+    padz, pady, padx = 100.0, 50.0, 200.0
+    ndamp = 10
+
+    ginsu = Ginsu((z0,y0,x0), (dz,dy,dx), (nz,ny,nx), (sz,sy,sx), (rz,ry,rx), ((padz,padz),(pady,pady),(padx,padx)), ((0,0),(ndamp,ndamp),(ndamp,ndamp)), dims=(:z,:y,:x), T=Float64)
+    @test lextents(ginsu, interior=false) == (-9:110,-14:49,-19:124)
+    @test lextents(ginsu, interior=true) == (-9:110,-4:39,-9:114)
+
+    map(i->@test(pextents(ginsu, interior=false)[i] ≈ (-100.0:10.0:1090.0,-150.0:10.0:480.0,-400.0:20.0:2460.0)[i]), 1:2)
+    map(i->@test(pextents(ginsu, interior=true)[i] ≈ (-100.0:10.0:1090.0,-50.0:10.0:380.0,-200.0:20.0:2260.0)[i]), 1:2)
+
+    for interior in (false, true), extend in (false, true)
+        x = rand(nz,ny,nx)
+        z = zeros(nz,ny,nx)
+
+        y = sub(ginsu, x, interior=interior, extend=extend)
+        test_ginsu_sub(ginsu, x, y, interior, extend)
+
+        super!(z, ginsu, y, interior=interior, accumulate=false)
+        test_ginsu_super(ginsu, x, z, interior)
+
+        super!(z, ginsu, y, interior=interior, accumulate=false)
+        test_ginsu_super(ginsu, x, z, interior)
+
+        super!(z, ginsu, y, interior=interior, accumulate=true)
+        test_ginsu_super(ginsu, 2x, z, interior)
+    end
+end
+
+@testset "Ginsu 3D Array Src&Rec" begin
+    nz, ny, nx = 100, 30, 200
+    dz, dy, dx = 10.0, 10.0, 20.0
+    z0, y0, x0 = 0.0, 0.0, 0.0
+
+    sz, sy, sx = [[10.0]], [[150.0]], [[2000.0]]
+    rz, ry, rx = [[0.0, 0.0]], [[0.0,270.0]], [[0.0, 1990.0]]
     padz, pady, padx = 100.0, 50.0, 200.0
     ndamp = 10
 
