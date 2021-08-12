@@ -8,7 +8,7 @@ struct Ginsu{N,JA,JB,JC,JD}
 end
 
 """
-    g = Ginsu(r0, dr, nr, sour, recr, padr, ndamp; dims=(:z,:y,:x), stencilhalfwidth=2)
+    g = Ginsu(r0, dr, nr, sour, recr, padr, ndamp; dims=(:z,:y,:x), stencilhalfwidth=2, vector_width=8)
 
 Create a Ginsu object that defines the model aperture for a given shot.  `g` is used to subset earth 
 models using the `sub` and `sub!` methods, and provides the inverse operation using the `super`, 
@@ -28,6 +28,7 @@ parameters.
 # named optional parameters
 * `dim=(:z,:y,:x)` axis ordering with the default being `z` fast, and `x` slow
 * `stencilhalfwidth=0` if there is a free-surface, set `stencilhalfwidth`, padr, and ndamp accordingly. This will add `stencilhalfwidth` cells above the free surface to allow copying the mirrored model to implement the free surface boundary condition.
+* `vector_width=8` sets the width required for vectorization of the code, and ensures that the size(ginsu) divided by vector_width has remainder zero for each dimension.
 
 # type specification
 * `g.lextrng` is the logical (1-based) indices for the Ginsu model subset
@@ -67,7 +68,8 @@ function Ginsu(
         ndamp::NTuple{N,Tuple{Int,Int}};
         T::DataType = Float32,
         dims::NTuple=(:z,:y,:x),
-        stencilhalfwidth::Int=0) where N
+        stencilhalfwidth::Int=0,
+        vector_width::Int = 8) where N
     nrec = length(recr[1])
     nsrc = length(sour[1])
     for idim = 2:N
@@ -108,11 +110,11 @@ function Ginsu(
         # integer range:
         idx_lb, idx_ub = floor(Int, (lb - r0[idim]) / dr[idim]) + 1, ceil(Int, (ub - r0[idim]) / dr[idim]) + 1
 
-        # ensure lengths are a scalar multiple of 8 (for simd/mjolnir)
+        # ensure lengths are a scalar multiple of vector_width (for vector alignment)
         n = idx_ub - idx_lb + 1
-        d,r = divrem(n,8)
+        d,r = divrem(n,vector_width)
         if r != 0
-            idx_ub = idx_lb + (d+1)*8 - 1
+            idx_ub = idx_lb + (d+1)*vector_width - 1
         end
 
         # interior/exterior ranges
@@ -138,7 +140,8 @@ function Ginsu(
         ndamp::NTuple{N,Tuple{Int,Int}};
         T = Float32,
         dims::Tuple=(:z,:y,:x),
-        stencilhalfwidth::Integer=0) where N
+        stencilhalfwidth::Integer=0,
+        vector_width::Int = 8) where N
     nshot = length(recr[1])
 
     ishot = 1
@@ -150,7 +153,7 @@ function Ginsu(
     lintrng_end = Int[g.lintrng[idim][end] for idim=1:N]
 
     for ishot = 2:nshot
-        g = Ginsu(r0, dr, nr, ntuple(idim->sour[idim][ishot], N), ntuple(idim->recr[idim][ishot], N), padr, ndamp, dims=dims, stencilhalfwidth=stencilhalfwidth)
+        g = Ginsu(r0, dr, nr, ntuple(idim->sour[idim][ishot], N), ntuple(idim->recr[idim][ishot], N), padr, ndamp, dims=dims, stencilhalfwidth=stencilhalfwidth, vector_width=vector_width)
         for idim = 1:N
             if g.lextrng[idim][1] < lextrng_beg[idim]
                 lextrng_beg[idim] = g.lextrng[idim][1]
@@ -179,7 +182,7 @@ Create a Ginsu object from absolute aperture.
 # required parameters[1,2]
 * `aperturer::NTuple{Range}` aperture in each dimension
 """
-function Ginsu(r0::NTuple{N,Real}, dr::NTuple{N,Real}, nr::NTuple{N,Int}, aperturer::NTuple{N,AbstractRange}, ndamp::NTuple{N,Tuple{Int,Int}}; T=Float32, stencilhalfwidth::Int=0, dims=(:z,:x,:y)) where N
+function Ginsu(r0::NTuple{N,Real}, dr::NTuple{N,Real}, nr::NTuple{N,Int}, aperturer::NTuple{N,AbstractRange}, ndamp::NTuple{N,Tuple{Int,Int}}; T=Float32, stencilhalfwidth::Int=0, dims=(:z,:x,:y), vector_width::Int = 8) where N
     lextrng = Array{UnitRange{Int64}}(undef, N)
     lintrng = Array{UnitRange{Int64}}(undef, N)
 
@@ -193,11 +196,11 @@ function Ginsu(r0::NTuple{N,Real}, dr::NTuple{N,Real}, nr::NTuple{N,Int}, apertu
         # integer range:
         idx_lb, idx_ub = floor(Int, (lb - r0[idim]) / dr[idim]) + 1, ceil(Int, (ub - r0[idim]) / dr[idim]) + 1
 
-        # ensure lengths are a scalar multiple of 8 (for simd)
+        # ensure lengths are a scalar multiple of vector_width (for vector alignment)
         n = idx_ub - idx_lb + 1
-        d,r = divrem(n,8)
+        d,r = divrem(n,vector_width)
         if r != 0
-            idx_ub = idx_lb + (d+1)*8 - 1
+            idx_ub = idx_lb + (d+1)*vector_width - 1
         end
 
         lextrng[idim] = idx_lb:idx_ub
