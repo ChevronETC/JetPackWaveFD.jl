@@ -134,6 +134,21 @@ end
     end
 end
 
+@testset "Ginsu Vector Width" begin
+    nz, nx = 100, 200
+    dz, dx = 10.0, 20.0
+    z0, x0 = 0.0, 0.0
+
+    sz, sx = [10.0], [2000.0]
+    rz, rx = [0.0, 0.0], [0.0, 1990.0]
+    padz, padx = 100.0, 200.0
+    ndamp = 10
+    for vector_width = (1,2,4,8,16,32)
+        ginsu = Ginsu((z0,x0), (dz,dx), (nz,nx), (sz,sx), (rz,rx), ((padz,padz),(padx,padx)), ((0,0),(ndamp,ndamp)), dims=(:z,:x), T=Float64, vector_width=vector_width)
+        @test size(ginsu) .% vector_width == (0,0)
+    end
+end
+
 @testset "Ginsu dot product" begin
     rz = 750.0*ones(size(75:125))
     rx = 10.0*collect(75:125)
