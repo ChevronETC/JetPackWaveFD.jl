@@ -142,26 +142,26 @@ function Ginsu(
         dims::Tuple=(:z,:y,:x),
         stencilhalfwidth::Integer=0,
         vector_width::Int = 8) where N
-    nshot = length(recr[1])
+    nshot = length(sour[1])
 
     ishot = 1
-    g = Ginsu(r0, dr, nr, ntuple(idim->sour[idim][ishot], N), ntuple(idim->recr[idim][ishot], N), padr, ndamp, dims=dims, stencilhalfwidth=stencilhalfwidth)
+    g = Ginsu(r0, dr, nr, ntuple(idim->sour[idim][ishot], N), ntuple(idim->recr[idim][ishot], N), padr, ndamp, dims=dims, stencilhalfwidth=stencilhalfwidth, vector_width=vector_width)
 
-    lextrng_beg = Int[g.lextrng[idim][1] for idim=1:N]
-    lextrng_end = Int[g.lextrng[idim][end] for idim=1:N]
-    lintrng_beg = Int[g.lintrng[idim][1] for idim=1:N]
-    lintrng_end = Int[g.lintrng[idim][end] for idim=1:N]
-
+    lextrng_beg = Int[lextents(g,interior=false)[idim][1] for idim=1:N]
+    lextrng_end = Int[lextents(g,interior=false)[idim][end] for idim=1:N]
+    lintrng_beg = Int[lextents(g,interior=true)[idim][1] for idim=1:N]
+    lintrng_end = Int[lextents(g,interior=true)[idim][end] for idim=1:N]
+    
     for ishot = 2:nshot
         g = Ginsu(r0, dr, nr, ntuple(idim->sour[idim][ishot], N), ntuple(idim->recr[idim][ishot], N), padr, ndamp, dims=dims, stencilhalfwidth=stencilhalfwidth, vector_width=vector_width)
         for idim = 1:N
-            if g.lextrng[idim][1] < lextrng_beg[idim]
-                lextrng_beg[idim] = g.lextrng[idim][1]
-                lintrng_beg[idim] = g.lintrng[idim][1]
+            if lextents(g)[idim][1] < lextrng_beg[idim]
+                lextrng_beg[idim] = lextents(g,interior=false)[idim][1]
+                lintrng_beg[idim] = lextents(g,interior=true)[idim][1]
             end
-            if g.lextrng[idim][end] > lextrng_end[idim]
-                lextrng_end[idim] = g.lextrng[idim][end]
-                lintrng_end[idim] = g.lintrng[idim][end]
+            if lextents(g)[idim][end] > lextrng_end[idim]
+                lextrng_end[idim] = lextents(g,interior=false)[idim][end]
+                lintrng_end[idim] = lextents(g,interior=true)[idim][end]
             end
         end
     end
