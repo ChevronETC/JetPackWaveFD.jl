@@ -568,7 +568,7 @@ function JopProp3DAcoTTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
             WaveFD.injectdata!(wavefields["pspace"], blks_sou, wavelet_realization, it)
         end
 
-        if it >= it0 && rem(it-1,itskip) == 0
+        if it >= it0 && rem(it-it0,itskip) == 0
             if length(d) > 0
                 # extract receiver data
                 cumtime_ex += @elapsed WaveFD.extractdata!(d, wavefields["pold"], div(it-it0,itskip)+1, iz_rec, iy_rec, ix_rec, c_rec)
@@ -580,10 +580,10 @@ function JopProp3DAcoTTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
             if kwargs[:srcfieldfile] != ""
                 cumtime_io += @elapsed for active_wavefield in active_wavefields
                     if kwargs[:isinterior]
-                        WaveFD.compressedwrite(iofield[active_wavefield], kwargs[:compressor][active_wavefield], div(it-1,itskip)+1,
+                        WaveFD.compressedwrite(iofield[active_wavefield], kwargs[:compressor][active_wavefield], div(it-it0,itskip)+1,
                             wavefields[active_wavefield], ginsu_interior_range)
                     else
-                        WaveFD.compressedwrite(iofield[active_wavefield], kwargs[:compressor][active_wavefield], div(it-1,itskip)+1,
+                        WaveFD.compressedwrite(iofield[active_wavefield], kwargs[:compressor][active_wavefield], div(it-it0,itskip)+1,
                             wavefields[active_wavefield])
                     end
                 end
