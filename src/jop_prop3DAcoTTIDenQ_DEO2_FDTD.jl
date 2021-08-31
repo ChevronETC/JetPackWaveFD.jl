@@ -575,7 +575,7 @@ function JopProp3DAcoTTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
             end
 
             # scale spatial derivatives by v^2/b to make them temporal derivatives
-            WaveFD.scale_spatial_derivatives!(p)
+            cumtime_io += WaveFD.scale_spatial_derivatives!(p)
 
             if kwargs[:srcfieldfile] != ""
                 cumtime_io += @elapsed for active_wavefield in active_wavefields
