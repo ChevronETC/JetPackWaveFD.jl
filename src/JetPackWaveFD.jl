@@ -10,6 +10,14 @@ function isvalid_srcfieldfile(m::AbstractArray, hostname, srcfieldfile, chksum)
     (validhost && validfile && validmodel, _chksum)
 end
 
+function isvalid_srcfieldfiles(m::AbstractArray, chksum, hostname, srcfieldfiles...)
+    _chksum = crc32c(m)
+    validhost = hostname == gethostname()
+    validfile = all(isfile.(srcfieldfiles))
+    validmodel = _chksum == chksum
+    (validhost && validfile && validmodel, _chksum)
+end
+
 function realizewavelet(wavelet, sz, sx, st, dtmod, ntmod_wav)
     local wavelet_realization
     if isa(wavelet, Array)
