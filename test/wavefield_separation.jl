@@ -172,10 +172,10 @@ end
         g4[1:nzero,:,:] .= 0
 
         # FWI gradients differ
-        @test norm(g1 .- g2) > eps(Float32) 
+        @test norm(g1 .- g2) / norm(g1) > eps(Float32) 
 
         # RTM gradients differ
-        @test norm(g3 .- g4) > eps(Float32) 
+        @test norm(g3 .- g4) / norm(g3) > eps(Float32) 
         
         # FWI gradient longer wavelength (more positive) than standard gradient
         @show sum(sign.(g1)), sum(sign.(g2))
@@ -244,10 +244,10 @@ end
         g4[1:nzero,:,:,:] .= 0
 
        # FWI gradients differ
-       @test norm(g1 .- g2) > eps(Float32) 
+       @test norm(g1 .- g2) / norm(g1) > eps(Float32) 
 
        # RTM gradients differ
-       @test norm(g3 .- g4) > eps(Float32) 
+       @test norm(g3 .- g4) / norm(g3) > eps(Float32) 
        
        # FWI gradient longer wavelength (more positive) than standard gradient
        @show sum(sign.(g1)), sum(sign.(g2))
