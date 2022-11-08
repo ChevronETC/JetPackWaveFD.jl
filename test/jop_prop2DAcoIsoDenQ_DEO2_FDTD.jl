@@ -2,7 +2,7 @@ using Formatting, FFTW, Jets, JetPackWaveFD, LinearAlgebra, SpecialFunctions, St
 
 modeltypes = (WaveFD.Prop2DAcoIsoDenQ_DEO2_FDTD_Model_V, WaveFD.Prop2DAcoIsoDenQ_DEO2_FDTD_Model_B, WaveFD.Prop2DAcoIsoDenQ_DEO2_FDTD_Model_VB)
 
-function make_op(interpmethod, modeltype, fs; comptype = Float32, st = 0.0, wavelet = WaveletCausalRicker(f=5.0))
+function make_op(interpmethod, modeltype, fs; comptype = Float32, st = 0.0, wavelet = WaveletCausalRicker(f=5.0), rec2mod=2)
     @show wavelet
     nsponge = 10
     pad = 20
@@ -10,15 +10,17 @@ function make_op(interpmethod, modeltype, fs; comptype = Float32, st = 0.0, wave
     nz = 50+2*pad
     nt = 101
     dx,dz,dt = 25.0,25.0,0.002
-    xmin,zmin,tmin = -pad*dx,-pad*dz,0.0
-    xmax,zmax,tmax = xmin+dx*(nx-pad-1),zmin+dz*(nz-pad-1),tmin+dt*(nt-1)
-    sx = dx*div(nx,2)
+    dtrec = dt
+    dtmod = dt / rec2mod
+    xmin,zmin = -pad*dx,-pad*dz
+    sx = dx*div(nx,2) + xmin
     sz = dz
-    rx = dx*[pad:nx-pad-1;]
+    rx = dx*[pad:nx-pad-1;] .+ xmin
     rz = 2*dz*ones(length(rx))
 
-    b = ones(Float32,nz,nx)
-    v = 1500 .* ones(Float32,nz,nx)
+    ρ = 2000.
+    b = Float32.(ones(nz, nx) ./ ρ)
+    v = 4000 .* ones(Float32,nz,nx)
 
     local m
     if modeltype == WaveFD.Prop2DAcoIsoDenQ_DEO2_FDTD_Model_V
@@ -36,7 +38,7 @@ function make_op(interpmethod, modeltype, fs; comptype = Float32, st = 0.0, wave
 
     F = JopNlProp2DAcoIsoDenQ_DEO2_FDTD(; kwargs...,
         z0 = zmin, x0 = xmin, dx = dx, dz = dz, sx = sx, sz = sz, st = st, rx = rx, rz = rz,
-        dtrec = dt, dtmod = dt, ntrec = nt, nsponge = nsponge, comptype = comptype, compscale = 1e-4,
+        dtrec = dtrec, dtmod = dtmod, ntrec = nt, nsponge = nsponge, comptype = comptype, compscale = 1e-4,
         freqQ = 5.0, qMin = 0.1, qInterior = 100.0, wavelet = wavelet, freesurface = fs, 
         reportinterval = 0, interpmethod = interpmethod, isinterior = false)
 
@@ -98,7 +100,7 @@ end
     @test d₁ ≈ d₂
 end
 
-@testset "JopProp2DAcoIsoDenQ_DEO2_FDTD -- linearization, interpmethod=$interpmethod, fs=$fs, modeltype=$modeltype" for interpmethod in (:linear,), fs in (false,), modeltype in modeltypes
+@testset "JopProp2DAcoIsoDenQ_DEO2_FDTD -- linearization, interpmethod=$interpmethod, fs=$fs, modeltype=$modeltype" for interpmethod in (:linear,:hicks), fs in (true,false), modeltype in modeltypes
     mₒ, F = make_op(interpmethod, modeltype, fs)
 
     δm = -1 .+ 2 .* rand(domain(F))
@@ -106,13 +108,26 @@ end
         δm[:,:,1] .*= 50
     elseif modeltype == WaveFD.Prop2DAcoIsoDenQ_DEO2_FDTD_Model_VB
         δm[:,:,1] .*= 50
-        δm[:,:,2] .*= 0.1
+        δm[:,:,2] .*= 1f-4
     elseif modeltype == WaveFD.Prop2DAcoIsoDenQ_DEO2_FDTD_Model_B
-        δm[:,:,1] .*= 0.1
+        δm[:,:,1] .*= 1f-4
+    end
+
+    mmask = ones(domain(F))
+    isx = (state(F).sx[1] - state(F).x0) / state(F).dx + 1
+    isz = (state(F).sz[1] - state(F).z0) / state(F).dz + 1
+    srcrad = 1.
+    for ix = 1 : size(domain(F), 2)
+        for iz = 1 : size(domain(F), 1)
+            ir = sqrt((ix - isx) ^ 2 + (iz - isz) ^ 2)
+            if ir <= srcrad
+                mmask[iz, ix, :] .= 0
+            end
+        end
     end
 
     μobs, μexp = linearization_test(F, mₒ, δm = δm,
-        μ = sqrt.([1.0,1.0/2.0,1.0/4.0,1.0/8.0,1.0/16.0,1.0/32.0,1.0/64.0,1.0/128.0,1.0/256.0,1.0/512.0]))
+        μ = sqrt.([1.0,1.0/2.0,1.0/4.0,1.0/8.0,1.0/16.0,1.0/32.0,1.0/64.0,1.0/128.0,1.0/256.0,1.0/512.0]), mmask=mmask)
 
     @show μobs, μexp
     @show minimum(abs, μobs - μexp)
@@ -158,7 +173,7 @@ end
 
 # note the compression is exercised on the second pass of F * m₀
 @testset "JopProp2DAcoIsoDenQ_DEO2_FDTD -- serialization, C=$C, modeltype=$modeltype" for C in (Float32, UInt32), modeltype in modeltypes
-    m₀, F = make_op(:hicks, modeltype, false, comptype = C)
+    m₀, F = make_op(:hicks, modeltype, false, comptype = C, rec2mod=1)
     d₁ = F * m₀
     d₂ = F * m₀
     @test d₁ ≈ d₂
