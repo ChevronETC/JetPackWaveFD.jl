@@ -818,7 +818,7 @@ function JopProp2DAcoIsoDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
     end
 
     free(p)
-    
+
     δm
 end
 
