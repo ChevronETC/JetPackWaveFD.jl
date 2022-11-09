@@ -1,6 +1,6 @@
 using Formatting, FFTW, Jets, JetPackWaveFD, LinearAlgebra, SpecialFunctions, Statistics, Test, WaveFD
 
-function make_op(modeltype, interpmethod, fs; v₀=1500, ϵ₀=0.2, η₀=0.4, comptype = Float32, st = 0.0, wavelet = WaveletCausalRicker(f=5.0))
+function make_op(modeltype, interpmethod, fs; v₀=4000, ϵ₀=0.2, η₀=0.4, comptype = Float32, st = 0.0, wavelet = WaveletCausalRicker(f=5.0), rec2mod=2)
     nsponge = 10
     pad = 20
     nx = 50+2*pad
@@ -8,14 +8,15 @@ function make_op(modeltype, interpmethod, fs; v₀=1500, ϵ₀=0.2, η₀=0.4, c
     nz = 30+2*pad
     nt = 101
     dx,dy,dz,dt = 25.0,25.0,25.0,0.002
-    xmin,ymin,zmin,tmin = -pad*dx,-pad*dy,-pad*dz,0.0
-    xmax,ymax,zmax,tmax = xmin+dx*(nx-pad-1),ymin+dy*(ny-pad-1),zmin+dz*(nz-pad-1),tmin+dt*(nt-1)
-    sx = dx*div(nx,2)
-    sy = dy*div(ny,2)
+    dtrec = dt
+    dtmod = dt / rec2mod
+    xmin,ymin,zmin = -pad*dx,-pad*dy,-pad*dz
+    sx = dx*div(nx,2) + xmin
+    sy = dy*div(ny,2) + ymin
     sz = dz
     rz = [dz for iy = 1+pad:ny-pad, ix = 1+pad:nx-pad][:]
-    ry = [(iy-1)*dy for iy = 1+pad:ny-pad, ix=1+pad:nx-pad][:]
-    rx = [(ix-1)*dx for iy = 1+pad:ny-pad, ix=1+pad:nx-pad][:]
+    ry = [(iy-1)*dy for iy = 1+pad:ny-pad, ix=1+pad:nx-pad][:] .+ ymin
+    rx = [(ix-1)*dx for iy = 1+pad:ny-pad, ix=1+pad:nx-pad][:] .+ xmin
 
     local ϵ,η
     if modeltype  == "v"
@@ -26,14 +27,15 @@ function make_op(modeltype, interpmethod, fs; v₀=1500, ϵ₀=0.2, η₀=0.4, c
         η = Array{Float32}(undef,0,0,0)
     end
     
-    b = ones(Float32,nz,ny,nx)
+    ρ = 2000.
+    b = Float32.(ones(nz, ny, nx) ./ ρ)
     θ = (Float32(π)/8) .* ones(Float32,nz,ny,nx)
     ϕ = (Float32(π)/4) .* ones(Float32,nz,ny,nx)
 
     F = JopNlProp3DAcoTTIDenQ_DEO2_FDTD(b = b, f = 0.85, ϵ = ϵ, η = η, θ = θ, ϕ = ϕ, 
         z0 = zmin, y0 = ymin, x0 = xmin, dz = dz, dy = dy, dx = dx, 
         sz = sz, sy = sy, sx = sx, st = st, rz = rz, ry = ry, rx = rx, 
-        dtrec = dt, dtmod = dt, ntrec = nt, nsponge = nsponge, comptype = comptype, compscale = 1e-4,
+        dtrec = dtrec, dtmod = dtmod, ntrec = nt, nsponge = nsponge, comptype = comptype, compscale = 1e-4,
         freqQ = 5.0, qMin = 0.1, qInterior = 100.0, wavelet = wavelet, freesurface = fs, 
         reportinterval = 0, interpmethod = interpmethod, isinterior = false)
 
@@ -106,13 +108,27 @@ end
 
 @testset "JopProp3DAcoTTIDenQ_DEO2_FDTD -- linearization, model type is $modeltype, interpmethod=$interpmethod, fs=$fs" for modeltype in ("vϵη", "v"), interpmethod in (:hicks,:linear), fs in (true,false)
     m₀, F = make_op(modeltype, interpmethod, fs) 
-    d = F * m₀
 
     mmask = zeros(domain(F))
     mmask[:,:,:,modelindex(F,"v")] .= 1
     if modeltype == "vϵη"
         mmask[:,:,:,modelindex(F,"ϵ")] .= 0.001
         mmask[:,:,:,modelindex(F,"η")] .= 0.001
+    end
+
+    isx = (state(F).sx[1] - state(F).x0) / state(F).dx + 1
+    isy = (state(F).sy[1] - state(F).y0) / state(F).dy + 1
+    isz = (state(F).sz[1] - state(F).z0) / state(F).dz + 1
+    srcrad = 1.
+    for ix = 1 : size(domain(F), 3)
+        for iy = 1 : size(domain(F), 2)
+            for iz = 1 : size(domain(F), 1)
+                ir = sqrt((ix - isx) ^ 2 + (iy - isy) ^ 2 + (iz - isz) ^ 2)
+                if ir <= srcrad
+                    mmask[iz, iy, ix, :] .= 0
+                end
+            end
+        end
     end
 
     μobs, μexp = linearization_test(F, m₀,
@@ -157,7 +173,7 @@ end
 
 # note the compression is exercised on the second pass of F * m₀
 @testset "JopProp3DAcoTTIDenQ_DEO2_FDTD -- serialization, modeltype=$modeltype, C=$C" for modeltype in ("vϵη", "v"), C in (Float32,UInt32)
-    m₀, F = make_op(modeltype, :hicks, false, comptype = C) 
+    m₀, F = make_op(modeltype, :hicks, false, comptype = C, rec2mod=1) 
     d₁ = F * m₀
     d₂ = F * m₀
     @test d₁ ≈ d₂

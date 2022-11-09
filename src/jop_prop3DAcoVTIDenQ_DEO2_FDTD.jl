@@ -495,8 +495,8 @@ function JopProp3DAcoVTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
     else
         iz_sou, iy_sou, ix_sou, c_sou = WaveFD.linearcoeffs(kwargs[:dz], kwargs[:dy], kwargs[:dx], z0_ginsu, y0_ginsu, x0_ginsu, nz_ginsu, ny_ginsu, nx_ginsu, kwargs[:sz], kwargs[:sy], kwargs[:sx])
     end
-    blks_sou = WaveFD.source_blocking(nz_ginsu, ny_ginsu, nx_ginsu, kwargs[:nbz_inject], kwargs[:nby_inject], kwargs[:nbx_inject], iz_sou, iy_sou, ix_sou, c_sou)
 
+    # Source blocking after scaled
     c_sou_scaled = Array{Array{Float32,3},1}(undef, length(c_sou))
     for i = 1:length(c_sou_scaled)
         c_sou_scaled[i] = similar(c_sou[i])
@@ -504,9 +504,11 @@ function JopProp3DAcoVTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
             jz = iz_sou[i][iz]
             jy = iy_sou[i][iy]
             jx = ix_sou[i][ix]
+            c_sou[i][iz,iy,ix] *= model_ginsu["b"][jz,jy,jx] / kwargs[:dx] / kwargs[:dy] / kwargs[:dz]
             c_sou_scaled[i][iz,iy,ix] = c_sou[i][iz,iy,ix] * kwargs[:dtmod]^2 * model_ginsu["v"][jz,jy,jx]^2 / model_ginsu["b"][jz,jy,jx]
         end
     end
+    blks_sou = WaveFD.source_blocking(nz_ginsu, ny_ginsu, nx_ginsu, kwargs[:nbz_inject], kwargs[:nby_inject], kwargs[:nbx_inject], iz_sou, iy_sou, ix_sou, c_sou)
     blks_sou_scaled = WaveFD.source_blocking(nz_ginsu, ny_ginsu, nx_ginsu, kwargs[:nbz_inject], kwargs[:nby_inject], kwargs[:nbx_inject], iz_sou, iy_sou, ix_sou, c_sou_scaled)
 
     local iz_rec, iy_rec, ix_rec, c_rec
@@ -536,6 +538,8 @@ function JopProp3DAcoVTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
     cumtime_io, cumtime_ex, cumtime_pr = 0.0, 0.0, 0.0
     kwargs[:reportinterval] == 0 || @info "nonlinear forward on $(gethostname()), srcfieldfile=$(kwargs[:srcfieldfile])"
 
+    dinterp = zeros(Float32, (ntmod_wav - it0 + 1), size(d, 2))
+
     set_zero_subnormals(true)
     for it = 1:ntmod_wav
         if kwargs[:reportinterval] != 0 && (it % kwargs[:reportinterval] == 0 || it == ntmod_wav)
@@ -553,12 +557,12 @@ function JopProp3DAcoVTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
             WaveFD.injectdata!(wavefields["pspace"], blks_sou, wavelet_realization, it)
         end
 
-        if it >= it0 && rem(it-it0,itskip) == 0
-            if length(d) > 0
-                # extract receiver data
-                cumtime_ex += @elapsed WaveFD.extractdata!(d, wavefields["pold"], div(it-it0,itskip)+1, iz_rec, iy_rec, ix_rec, c_rec)
-            end
+        # extract data at receivers
+        if length(d) > 0 && it >= it0
+            cumtime_ex += @elapsed WaveFD.extractdata!(dinterp, wavefields["pold"], it - it0 + 1, iz_rec, iy_rec, ix_rec, c_rec)
+        end
 
+        if it >= it0 && rem(it-it0,itskip) == 0
             # scale spatial derivatives by v^2/b to make them temporal derivatives
             cumtime_io += @elapsed WaveFD.scale_spatial_derivatives!(p)
 
@@ -577,6 +581,10 @@ function JopProp3DAcoVTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
     end
     set_zero_subnormals(false)
     JopProp3DAcoVTIDenQ_DEO2_FDTD_stats(kwargs[:stats], kwargs[:ginsu], ntmod_wav, time()-time1, cumtime_io, cumtime_ex)
+
+    if length(d) > 0
+        WaveFD.interpforward!(WaveFD.interpfilters(kwargs[:dtmod], kwargs[:dtrec], 0, WaveFD.LangC(), kwargs[:nthreads]), d, dinterp)
+    end
 
     if kwargs[:srcfieldfile] != ""
         for active_wavefield in active_wavefields
@@ -661,6 +669,7 @@ function JopProp3DAcoVTIDenQ_DEO2_FDTD_df!(δd::AbstractArray, δm::AbstractArra
     δm_ginsu = Dict{String,Array{Float32,3}}()
     for prop in keys(kwargs[:active_modelset])
         δm_ginsu[prop] = sub(kwargs[:ginsu], @view(δm[:,:,:,kwargs[:active_modelset][prop]]), extend=false)
+        δm_ginsu[prop] .*= kwargs[:dtrec] / kwargs[:dtmod]
     end
 
     ginsu_interior_range = interior(kwargs[:ginsu])
@@ -733,7 +742,6 @@ function JopProp3DAcoVTIDenQ_DEO2_FDTD_df!(δd::AbstractArray, δm::AbstractArra
     JopProp3DAcoVTIDenQ_DEO2_FDTD_stats(kwargs[:stats], kwargs[:ginsu], ntmod, time()-time1, 
         cumtime_io, cumtime_ex, cumtime_im)
 
-    δd .= 0
     WaveFD.interpforward!(WaveFD.interpfilters(kwargs[:dtmod], kwargs[:dtrec], 0, WaveFD.LangC(), kwargs[:nthreads]), δd, δdinterp)
 
     for active_wavefield in kwargs[:active_wavefields]
@@ -865,6 +873,9 @@ function JopProp3DAcoVTIDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
             # born accumulation
             cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], kwargs[:imgcondition], δm_ginsu, wavefields)
         end
+    end
+    for prop in keys(kwargs[:active_modelset])
+        δm_ginsu[prop] .*= kwargs[:dtrec] / kwargs[:dtmod]
     end
     set_zero_subnormals(false)
     JopProp3DAcoVTIDenQ_DEO2_FDTD_stats(kwargs[:stats], kwargs[:ginsu], ntmod, time()-time1, cumtime_io, cumtime_ex, cumtime_im)
