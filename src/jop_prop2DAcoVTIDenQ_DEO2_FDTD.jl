@@ -598,6 +598,12 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_f!(d::AbstractArray, m::AbstractArray{Flo
             WaveFD.compressedread!(iofield, kwargs[:compressor]["pold"], it, field)
             WaveFD.extractdata!(d, field, it, iz, ix, c)
         end
+
+        # interpolate to dtmod and back so amplitudes match data created by nonlinear forward operator
+        ntmod = WaveFD.default_ntmod(kwargs[:dtrec], kwargs[:dtmod], kwargs[:ntrec])
+        dinterp = zeros(Float32, ntmod, size(d, 2))
+        WaveFD.interpadjoint!(WaveFD.interpfilters(kwargs[:dtmod], kwargs[:dtrec], 1, WaveFD.LangC(), kwargs[:nthreads]), dinterp, d)
+        WaveFD.interpforward!(WaveFD.interpfilters(kwargs[:dtmod], kwargs[:dtrec], 0, WaveFD.LangC(), kwargs[:nthreads]), d, dinterp)
         close(iofield)
         close(kwargs[:compressor]["pold"])
     end
