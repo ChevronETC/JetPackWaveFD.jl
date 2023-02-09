@@ -1,6 +1,6 @@
 name = "JetPackWaveFD"
 uuid = "30ac78e6-0b88-494d-b61b-9674962a0c3e"
-version = "0.4.1"
+version = "0.5.0"
 
 [deps]
 CRC32c = "8bf52ea8-c179-5cab-976a-9e18b702a9bc"
