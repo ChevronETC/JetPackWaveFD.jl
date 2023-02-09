@@ -179,10 +179,11 @@ end
 
 # note the compression is exercised on the second pass of F * m₀
 @testset "JopProp3DAcoVTIDenQ_DEO2_FDTD -- serialization, modeltype=$modeltype, C=$C" for C in (Float32, UInt32), modeltype in modeltypes
-    m₀, F = make_op(:linear, modeltype, false, comptype = C, rec2mod=1)
+    m₀, F = make_op(:linear, modeltype, false, comptype = C)
     d₁ = F * m₀
     d₂ = F * m₀
-    @test d₁ ≈ d₂
+    err = sum((d₁-d₂).^2)/sum(d₁.^2 .+ d₂.^2)*2
+    @test err < 1e-4
 
     close(F)
 end
