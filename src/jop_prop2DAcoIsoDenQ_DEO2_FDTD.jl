@@ -130,8 +130,7 @@ function JetProp2DAcoIsoDenQ_DEO2_FDTD(;
         lowercase("standard") => WaveFD.ImagingConditionStandard(),
         lowercase("FWI") => WaveFD.ImagingConditionWaveFieldSeparationFWI(),
         lowercase("RTM") => WaveFD.ImagingConditionWaveFieldSeparationRTM(),
-        lowercase("MIX") => WaveFD.ImagingConditionWaveFieldSeparationMIX(),
-        )
+        lowercase("MIX") => WaveFD.ImagingConditionWaveFieldSeparationMIX())
 
     if lowercase(imgcondition) ∉ keys(icdict)
         error("Supplied imaging condition 'imgcondition' is not in [standard, FWI, RTM, MIX]")
@@ -824,7 +823,7 @@ function JopProp2DAcoIsoDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
 
             # TODO: change functionality to accept RTM_weight
             # born accumulation
-            cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], kwargs[:imgcondition], kwargs[:RTM_weight] δm_ginsu, wavefields)
+            cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], kwargs[:imgcondition], kwargs[:RTM_weight], δm_ginsu, wavefields)
         end
     end
     for prop in keys(kwargs[:active_modelset])
