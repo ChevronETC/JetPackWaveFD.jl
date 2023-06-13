@@ -152,7 +152,7 @@ function JetProp2DAcoIsoDenQ_DEO2_FDTD(;
     lowercase(imgcondition) === "standard" ? RTM_weight = 0.5f0 : nothing
     lowercase(imgcondition) === "rtm" ? RTM_weight = 1.0f0 : nothing
         
-    @info "RTM_weight: $(RTM_weight)$"
+    @info "RTM_weight: $(RTM_weight)"
 
     Jet(
         dom = dom,
