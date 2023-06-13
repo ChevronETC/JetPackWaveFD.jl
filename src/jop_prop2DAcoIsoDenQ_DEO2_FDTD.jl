@@ -35,6 +35,7 @@ function JetProp2DAcoIsoDenQ_DEO2_FDTD(;
         wavelet = WaveletCausalRicker(f=5.0),
         freesurface = false,
         imgcondition = "standard",
+        RTM_weight = 0.5f0,  
         nthreads = Sys.CPU_THREADS,
         reportinterval = 500)
     # active and passive earth model properties.  The active set is in the model-space
@@ -128,12 +129,27 @@ function JetProp2DAcoIsoDenQ_DEO2_FDTD(;
     icdict = Dict(
         lowercase("standard") => WaveFD.ImagingConditionStandard(),
         lowercase("FWI") => WaveFD.ImagingConditionWaveFieldSeparationFWI(),
-        lowercase("RTM") => WaveFD.ImagingConditionWaveFieldSeparationRTM())
+        lowercase("RTM") => WaveFD.ImagingConditionWaveFieldSeparationRTM(),
+        lowercase("MIX") => WaveFD.ImagingConditionWaveFieldSeparationMIX(),
+        )
 
     if lowercase(imgcondition) ∉ keys(icdict)
-        error("Supplied imaging condition 'imgcondition' is not in [standard, FWI, RTM]")
+        error("Supplied imaging condition 'imgcondition' is not in [standard, FWI, RTM, MIX]")
+    end
+       
+    # imgcondition MIX requires two correlation, one for long wavelengths and one for short wavelengths, bounds checking for special cases improves efficiency. 
+    if lowercase(imgcondition) === "mix" && RTM_weight === 0.0
+        @info "Prop2DAcoIsoDenQ_DEO2_FDTD -- RTM_weight ($(RTM_weight)) for imgcondition $(imgcondition) is equivalent to imgcondition FWI. Resetting imgcondition."
+        imgcondition = "FWI" 
+    elseif lowercase(imgcondition) === "mix" && RTM_weight === 0.5
+        @info "Prop2DAcoIsoDenQ_DEO2_FDTD -- RTM_weight ($(RTM_weight)) for imgcondition $(imgcondition) is equivalent to imgcondition standard. Resetting imgcondition."
+        imgcondition = "standard"
+    elseif lowercase(imgcondition) === "mix" && RTM_weight === 1.0
+        @info "Prop2DAcoIsoDenQ_DEO2_FDTD -- RTM_weight ($(RTM_weight)) for imgcondition $(imgcondition) is equivalent to imgcondition RTM. Resetting imgcondition."
+        imgcondition = "RTM"
     end
         
+
     Jet(
         dom = dom,
         rng = rng,
@@ -175,6 +191,7 @@ function JetProp2DAcoIsoDenQ_DEO2_FDTD(;
             wavelet = wavelet,
             freesurface = freesurface,
             imgcondition = get(icdict, lowercase(imgcondition), WaveFD.ImagingConditionStandard()),
+            RTM_weight,
             nthreads = nthreads,
             reportinterval = reportinterval,
             stats = Dict{String,Float64}("MCells/s"=>0.0, "%io"=>0.0, "%inject/extract"=>0.0, "%imaging"=>0.0)))
@@ -362,7 +379,10 @@ Defaults for arguments are shown inside square brackets.
 * `imgcondition` ["standard"] Selects the type of imaging condition used. Choose from "standard", "FWI", 
     and "RTM". "FWI" and "RTM" will perform Kz wavenumber filtering prior to the imaging condition
     in order to promote long wavelengths (for FWI), or remove long wavelength backscattered energy (for 
-    RTM). Note the true adjoint only exists for "standard" imaging condition currently.
+    RTM). "MIX" balances short wavelengths in the "RTM" IC and long wavelengths in the "FWI IC" by using 
+    the RTM_weight variable. Note the true adjoint only exists for "standard" imaging condition currently.
+* `RTM_weight` variable controlling the relative balance of RTM and FWI imaging conditions. A value of 1.0 
+    is equivalent to RTM, 0.0 is equivalent to FWI, and 0.5 is equivalent to the standard IC.
 * `nthreads [Sys.CPU_THREADS]` The number of threads to use for OpenMP parallelization of the modeling.
 * `reportinterval [500]` The interval at which information about the propagtion is logged.
 
@@ -802,8 +822,9 @@ function JopProp2DAcoIsoDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
                 end
             end
 
+            # TODO: change functionality to accept RTM_weight
             # born accumulation
-            cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], kwargs[:imgcondition], δm_ginsu, wavefields)
+            cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], kwargs[:imgcondition], kwargs[:RTM_weight] δm_ginsu, wavefields)
         end
     end
     for prop in keys(kwargs[:active_modelset])
