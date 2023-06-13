@@ -150,7 +150,7 @@ function JetProp2DAcoIsoDenQ_DEO2_FDTD(;
 
     lowercase(imgcondition) === "fwi" ? RTM_weight = 0.0f0 : nothing
     lowercase(imgcondition) === "standard" ? RTM_weight = 0.5f0 : nothing
-    lowercase(imgcondition) === "RTM" ? RTM_weight = 1.0f0 : nothing
+    lowercase(imgcondition) === "rtm" ? RTM_weight = 1.0f0 : nothing
         
     @info RTM_weight
 
