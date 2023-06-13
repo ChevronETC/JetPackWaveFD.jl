@@ -829,7 +829,7 @@ function JopProp2DAcoIsoDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
             # TODO: change functionality to accept RTM_weight
             # born accumulation
             if lowercase(imgcondition) === "standard"
-                cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], kwargs[:RTM_weight], δm_ginsu, wavefields)
+                cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], kwargs[:imgcondition], δm_ginsu, wavefields)
             else
                 cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], kwargs[:imgcondition], kwargs[:RTM_weight], δm_ginsu, wavefields)
             end
