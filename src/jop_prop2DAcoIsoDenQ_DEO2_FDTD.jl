@@ -812,7 +812,7 @@ function JopProp2DAcoIsoDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
             if kwargs[:imgcondition] !== WaveFD.ImagingConditionWaveFieldSeparationMIX()
                 cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], kwargs[:imgcondition], δm_ginsu, wavefields)
             else
-                @info "Imaging condition of type MIX with RTM_weight: $(kwargs[:RTM_weight])"
+                # @info "Imaging condition of type MIX with RTM_weight: $(kwargs[:RTM_weight])"
                 cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], kwargs[:imgcondition], kwargs[:RTM_weight], δm_ginsu, wavefields)
             end
         end
