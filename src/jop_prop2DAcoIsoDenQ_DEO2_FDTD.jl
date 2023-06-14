@@ -137,20 +137,20 @@ function JetProp2DAcoIsoDenQ_DEO2_FDTD(;
     end
        
     # imgcondition MIX requires two correlation, one for long wavelengths and one for short wavelengths, bounds checking for special cases improves efficiency. 
-    if lowercase(imgcondition) === "mix" && RTM_weight === 0.0
-        @info "Prop2DAcoIsoDenQ_DEO2_FDTD -- RTM_weight ($(RTM_weight)) for imgcondition $(imgcondition) is equivalent to imgcondition FWI. Resetting imgcondition to RTM."
-        imgcondition = "FWI" 
-    elseif lowercase(imgcondition) === "mix" && RTM_weight === 0.5
-        @info "Prop2DAcoIsoDenQ_DEO2_FDTD -- RTM_weight ($(RTM_weight)) for imgcondition $(imgcondition) is equivalent to imgcondition standard. Resetting imgcondition to standard."
-        imgcondition = "standard"
-    elseif lowercase(imgcondition) === "mix" && RTM_weight === 1.0
-        @info "Prop2DAcoIsoDenQ_DEO2_FDTD -- RTM_weight ($(RTM_weight)) for imgcondition $(imgcondition) is equivalent to imgcondition RTM. Resetting imgcondition to FWI."
-        imgcondition = "RTM"
-    end
+    # if lowercase(imgcondition) === "mix" && RTM_weight === 0.0
+    #     @info "Prop2DAcoIsoDenQ_DEO2_FDTD -- RTM_weight ($(RTM_weight)) for imgcondition $(imgcondition) is equivalent to imgcondition FWI. Resetting imgcondition to RTM."
+    #     imgcondition = "FWI" 
+    # elseif lowercase(imgcondition) === "mix" && RTM_weight === 0.5
+    #     @info "Prop2DAcoIsoDenQ_DEO2_FDTD -- RTM_weight ($(RTM_weight)) for imgcondition $(imgcondition) is equivalent to imgcondition standard. Resetting imgcondition to standard."
+    #     imgcondition = "standard"
+    # elseif lowercase(imgcondition) === "mix" && RTM_weight === 1.0
+    #     @info "Prop2DAcoIsoDenQ_DEO2_FDTD -- RTM_weight ($(RTM_weight)) for imgcondition $(imgcondition) is equivalent to imgcondition RTM. Resetting imgcondition to FWI."
+    #     imgcondition = "RTM"
+    # end
 
-    lowercase(imgcondition) === "fwi" ? RTM_weight = 0.0f0 : nothing
-    lowercase(imgcondition) === "standard" ? RTM_weight = 0.5f0 : nothing
-    lowercase(imgcondition) === "rtm" ? RTM_weight = 1.0f0 : nothing
+    # lowercase(imgcondition) === "fwi" ? RTM_weight = 0.0f0 : nothing
+    # lowercase(imgcondition) === "standard" ? RTM_weight = 0.5f0 : nothing
+    # lowercase(imgcondition) === "rtm" ? RTM_weight = 1.0f0 : nothing
         
     @info "RTM_weight: $(RTM_weight)"
 
