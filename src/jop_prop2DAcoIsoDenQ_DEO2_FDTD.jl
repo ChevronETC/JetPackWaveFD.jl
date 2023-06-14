@@ -810,11 +810,22 @@ function JopProp2DAcoIsoDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
 
             # born accumulation
             if kwargs[:imgcondition] !== WaveFD.ImagingConditionWaveFieldSeparationMIX()
-                cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], kwargs[:imgcondition], 1.0f0, δm_ginsu, wavefields)
+                cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], kwargs[:imgcondition], δm_ginsu, wavefields)
             else
                 # @info "Imaging condition of type MIX with RTM_weight: $(kwargs[:RTM_weight])"
-                cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], WaveFD.ImagingConditionWaveFieldSeparationFWI(), 1.0f0-kwargs[:RTM_weight], δm_ginsu, wavefields)
-                cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], WaveFD.ImagingConditionWaveFieldSeparationRTM(), kwargs[:RTM_weight], δm_ginsu, wavefields)
+                δm_all = similar(δm_ginsu)
+                δm_all .= δm_ginsu
+                cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], WaveFD.WaveFD.ImagingConditionStandard(), δm_all, wavefields)
+                weightAll = 1.0f0 - kwargs[:RTM_weight]
+                δm_all .*= weightAll ./ maximum(abs,δm_all)
+
+                δm_RTM = similar(δm_ginsu)
+                δm_RTM .= δm_ginsu
+                cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], WaveFD.ImagingConditionWaveFieldSeparationRTM(), δm_RTM, wavefields)
+                weightShort = 2..0f0 * kwargs[:RTM_weight] - 1.0f0
+                δm_RTM .*= weightShort ./ maximum(abs,δm_RTM)
+
+                δm_ginsu .= δm_all .+ δm_RTM
             end
         end
     end
