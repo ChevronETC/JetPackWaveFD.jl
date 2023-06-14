@@ -135,25 +135,7 @@ function JetProp2DAcoIsoDenQ_DEO2_FDTD(;
     if lowercase(imgcondition) ∉ keys(icdict)
         error("Supplied imaging condition 'imgcondition' is not in [standard, FWI, RTM, MIX]")
     end
-       
-    # imgcondition MIX requires two correlation, one for long wavelengths and one for short wavelengths, bounds checking for special cases improves efficiency. 
-    # if lowercase(imgcondition) === "mix" && RTM_weight === 0.0
-    #     @info "Prop2DAcoIsoDenQ_DEO2_FDTD -- RTM_weight ($(RTM_weight)) for imgcondition $(imgcondition) is equivalent to imgcondition FWI. Resetting imgcondition to RTM."
-    #     imgcondition = "FWI" 
-    # elseif lowercase(imgcondition) === "mix" && RTM_weight === 0.5
-    #     @info "Prop2DAcoIsoDenQ_DEO2_FDTD -- RTM_weight ($(RTM_weight)) for imgcondition $(imgcondition) is equivalent to imgcondition standard. Resetting imgcondition to standard."
-    #     imgcondition = "standard"
-    # elseif lowercase(imgcondition) === "mix" && RTM_weight === 1.0
-    #     @info "Prop2DAcoIsoDenQ_DEO2_FDTD -- RTM_weight ($(RTM_weight)) for imgcondition $(imgcondition) is equivalent to imgcondition RTM. Resetting imgcondition to FWI."
-    #     imgcondition = "RTM"
-    # end
-
-    # lowercase(imgcondition) === "fwi" ? RTM_weight = 0.0f0 : nothing
-    # lowercase(imgcondition) === "standard" ? RTM_weight = 0.5f0 : nothing
-    # lowercase(imgcondition) === "rtm" ? RTM_weight = 1.0f0 : nothing
-        
-    @info "RTM_weight: $(RTM_weight)"
-
+    
     Jet(
         dom = dom,
         rng = rng,
@@ -826,11 +808,11 @@ function JopProp2DAcoIsoDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
                 end
             end
 
-            # TODO: change functionality to accept RTM_weight
             # born accumulation
             if kwargs[:imgcondition] !== WaveFD.ImagingConditionWaveFieldSeparationMIX()
                 cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], kwargs[:imgcondition], δm_ginsu, wavefields)
             else
+                @info "Imaging condition `imgcondition` of type MIX with RTM_weight: $(RTM_weight)"
                 cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], kwargs[:imgcondition], kwargs[:RTM_weight], δm_ginsu, wavefields)
             end
         end
