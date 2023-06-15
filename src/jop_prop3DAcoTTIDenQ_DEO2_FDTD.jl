@@ -43,6 +43,7 @@ function JetProp3DAcoTTIDenQ_DEO2_FDTD(;
         wavelet = WaveletCausalRicker(f=5.0),
         freesurface = false,
         imgcondition = "standard",
+        RTM_weight = 0.5, 
         nthreads = Sys.CPU_THREADS,
         reportinterval = 500)
 
@@ -128,10 +129,11 @@ function JetProp3DAcoTTIDenQ_DEO2_FDTD(;
     icdict = Dict(
         lowercase("standard") => WaveFD.ImagingConditionStandard(),
         lowercase("FWI") => WaveFD.ImagingConditionWaveFieldSeparationFWI(),
-        lowercase("RTM") => WaveFD.ImagingConditionWaveFieldSeparationRTM())
+        lowercase("RTM") => WaveFD.ImagingConditionWaveFieldSeparationRTM(),
+        lowercase("MIX") => WaveFD.ImagingConditionWaveFieldSeparationMIX())
 
     if lowercase(imgcondition) ∉ keys(icdict)
-        error("Supplied imaging condition 'imgcondition' is not in [standard, FWI, RTM]")
+        error("Supplied imaging condition 'imgcondition' is not in [standard, FWI, RTM, MIX]")
     end
         
     # construct:
@@ -180,6 +182,7 @@ function JetProp3DAcoTTIDenQ_DEO2_FDTD(;
             wavelet = wavelet,
             freesurface = freesurface,
             imgcondition = get(icdict, lowercase(imgcondition), WaveFD.ImagingConditionStandard()),
+            RTM_weight = RTM_weight, 
             nthreads = nthreads,
             reportinterval = reportinterval,
             stats = Dict{String,Float64}("MCells/s"=>0.0, "%io"=>0.0, "%inject/extract"=>0.0, "%imaging"=>0.0)))
@@ -432,7 +435,11 @@ Defaults for arguments are shown inside square brackets.
 * `imgcondition` ["standard"] Selects the type of imaging condition used. Choose from "standard", "FWI", 
     and "RTM". "FWI" and "RTM" will perform Kz wavenumber filtering prior to the imaging condition
     in order to promote long wavelengths (for FWI), or remove long wavelength backscattered energy (for 
-    RTM). Note the true adjoint only exists for "standard" imaging condition currently.
+    RTM). "MIX" mixes the FWI imaging condition using the parameter RTM_weight. Note the true adjoint 
+    only exists for "standard" imaging condition currently.
+* `RTM_weight [0.5]` determines the balance of short wavelengths and long wavelengths in the imaging condition. 
+    A value of 0.0 is equivalent to the FWI imaging condition, a value of 0.5 is equivalent to the standard
+    imaging condtion, and a value of 1.0 is equivalent to the RTM imaging condition. 
 * `nthreads [Sys.CPU_THREADS]` The number of threads to use for OpenMP parallelization of the modeling.
 * `reportinterval [500]` The interval at which information about the propagtion is logged.
 
@@ -810,6 +817,10 @@ function JopProp3DAcoTTIDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
     δm_ginsu = Dict{String,Array{Float32,3}}()
     for prop in keys(kwargs[:active_modelset])
         δm_ginsu[prop] = zeros(Float32, nz_ginsu, ny_ginsu, nx_ginsu)
+        if isa(kwargs[:imgcondition], WaveFD.ImagingConditionWaveFieldSeparationMIX)
+            δm_ginsu["rtm_$prop"] = zeros(Float32, nz_ginsu, ny_ginsu, nx_ginsu)
+            δm_ginsu["all_$prop"] = zeros(Float32, nz_ginsu, ny_ginsu, nx_ginsu)
+        end
     end
 
     ginsu_interior_range = interior(kwargs[:ginsu])
@@ -887,10 +898,16 @@ function JopProp3DAcoTTIDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
             cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], kwargs[:imgcondition], δm_ginsu, wavefields)
         end
     end
+    set_zero_subnormals(false)
+
     for prop in keys(kwargs[:active_modelset])
+        if isa(kwargs[:imgcondition], WaveFD.ImagingConditionWaveFieldSeparationMIX)
+            weight_all = 1 - kwargs[:RTM_weight]
+            weight_short = 2*kwargs[:RTM_weight] - 1
+            δm_ginsu[prop] .= (δm_ginsu["all_$prop"]  .* weight_all) .+ (δm_ginsu["rtm_$prop"]  .* weight_short)
+        end
         δm_ginsu[prop] .*= kwargs[:dtrec] / kwargs[:dtmod]
     end
-    set_zero_subnormals(false)
     JopProp3DAcoTTIDenQ_DEO2_FDTD_stats(kwargs[:stats], kwargs[:ginsu], ntmod, time()-time1, cumtime_io, cumtime_ex, cumtime_im)
 
     # undo ginsu

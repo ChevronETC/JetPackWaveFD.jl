@@ -30,7 +30,7 @@ ntrec,nsponge,reportinterval = 251,40,0
 z,y,x,δz,δy,δx = 600.0,700.0,800.0,10.0,10.0,10.0
 nz,ny,nx = round(Int,z/δz)+1,round(Int,y/δy)+1,round(Int,x/δx)+1
 
-function makeF(; dim::Int=2, physics::String="ISO", imgcondition::String="standard")
+function makeF(; dim::Int=2, physics::String="ISO", imgcondition::String="standard", RTM_weight=0.25)
     if dim == 2
         sz = δz * 1;
         sx = δx * div(nx,2);
@@ -53,7 +53,7 @@ function makeF(; dim::Int=2, physics::String="ISO", imgcondition::String="standa
             sz = sz, sx = sx, rz = rz, rx = rx, dz = δz, dx = δx,
             dtmod = dtmod, dtrec = dtrec, ntrec = ntrec, nsponge = nsponge,
             wavelet = WaveletCausalRicker(f=fpeak),
-            imgcondition = imgcondition, reportinterval = reportinterval)
+            imgcondition = imgcondition, RTM_weight = RTM_weight, reportinterval = reportinterval)
 
     elseif dim == 2 && physics == "VTI"
         b = 0.001f0 .* ones(Float32,nz,nx)
@@ -65,7 +65,7 @@ function makeF(; dim::Int=2, physics::String="ISO", imgcondition::String="standa
             sz = sz, sx = sx, rz = rz, rx = rx, dz = δz, dx = δx,
             dtmod = dtmod, dtrec = dtrec, ntrec = ntrec, nsponge = nsponge,
             wavelet = WaveletCausalRicker(f=fpeak),
-            imgcondition = imgcondition, reportinterval = reportinterval)
+            imgcondition = imgcondition, RTM_weight = RTM_weight, reportinterval = reportinterval)
 
     elseif dim == 2 && physics == "TTI"
         b = 0.001f0 .* ones(Float32,nz,nx)
@@ -78,7 +78,7 @@ function makeF(; dim::Int=2, physics::String="ISO", imgcondition::String="standa
             sz = sz, sx = sx, rz = rz, rx = rx, dz = δz, dx = δx,
             dtmod = dtmod, dtrec = dtrec, ntrec = ntrec, nsponge = nsponge,
             wavelet = WaveletCausalRicker(f=fpeak),
-            imgcondition = imgcondition, reportinterval = reportinterval)
+            imgcondition = imgcondition, RTM_weight = RTM_weight, reportinterval = reportinterval)
 
     elseif dim == 3 && physics == "ISO"
         b = 0.001f0 .* ones(Float32,nz,ny,nx)
@@ -88,7 +88,7 @@ function makeF(; dim::Int=2, physics::String="ISO", imgcondition::String="standa
             sz = sz, sy = sy, sx = sx, rz = rz, ry = ry, rx = rx, dz = δz, dy = δy, dx = δx,
             dtmod = dtmod, dtrec = dtrec, ntrec = ntrec, nsponge = nsponge,
             wavelet = WaveletCausalRicker(f=fpeak),
-            imgcondition = imgcondition, reportinterval = reportinterval)
+            imgcondition = imgcondition, RTM_weight = RTM_weight, reportinterval = reportinterval)
 
     elseif dim == 3 && physics == "VTI"
         b = 0.001f0 .* ones(Float32,nz,ny,nx)
@@ -100,7 +100,7 @@ function makeF(; dim::Int=2, physics::String="ISO", imgcondition::String="standa
             sz = sz, sy = sy, sx = sx, rz = rz, ry = ry, rx = rx, dz = δz, dy = δy, dx = δx,
             dtmod = dtmod, dtrec = dtrec, ntrec = ntrec, nsponge = nsponge,
             wavelet = WaveletCausalRicker(f=fpeak),
-            imgcondition = imgcondition, reportinterval = reportinterval)
+            imgcondition = imgcondition, RTM_weight = RTM_weight, reportinterval = reportinterval)
 
     elseif dim == 3 && physics == "TTI"
         b = 0.001f0 .* ones(Float32,nz,ny,nx)
@@ -114,7 +114,7 @@ function makeF(; dim::Int=2, physics::String="ISO", imgcondition::String="standa
             sz = sz, sy = sy, sx = sx, rz = rz, ry = ry, rx = rx, dz = δz, dy = δy, dx = δx,
             dtmod = dtmod, dtrec = dtrec, ntrec = ntrec, nsponge = nsponge,
             wavelet = WaveletCausalRicker(f=fpeak),
-            imgcondition = imgcondition, reportinterval = reportinterval)
+            imgcondition = imgcondition, RTM_weight = RTM_weight, reportinterval = reportinterval)
     end
 end
 
@@ -126,6 +126,7 @@ end
         opStd = makeF(;dim=2, physics=physics, imgcondition="standard");
         opFwi = makeF(;dim=2, physics=physics, imgcondition="FWI");
         opRtm = makeF(;dim=2, physics=physics, imgcondition="RTM");
+        opMix = makeF(;dim=2, physics=physics, imgcondition="MIX", RTM_weight=0.25);
 
         vw = 1500 .* ones(domain(opStd)); # water velocity model
         va = 1500 .* ones(domain(opStd));
@@ -160,9 +161,16 @@ end
         J4 = jacobian!(opRtm,vb);
         g4 = J4' * r4;
 
+        # wavefield seperation mix
+        d5b = opStd * vb
+        r5 = d5b .- d1a
+        J5 = jacobian!(opMix,vb)
+        g5 = J5' * r5
+
         close(opStd)
         close(opFwi)
         close(opRtm)
+        close(opMix)
         
         # remove pixels near source to eliminate very large amplitudes
         nzero = 5
@@ -170,13 +178,17 @@ end
         g2[1:nzero,:,:] .= 0
         g3[1:nzero,:,:] .= 0
         g4[1:nzero,:,:] .= 0
+        g5[1:nzero,:,:] .= 0
 
         # FWI gradients differ
         @test norm(g1 .- g2) / norm(g1) > eps(Float32) 
 
         # RTM gradients differ
         @test norm(g3 .- g4) / norm(g3) > eps(Float32) 
-        
+
+        # MIX gradients differ
+        @test norm(g1 .- g5) / norm(g5) > eps(Float32)
+
         # FWI gradient longer wavelength (more positive) than standard gradient
         @show sum(sign.(g1)), sum(sign.(g2))
         @test sum(sign.(g2)) > sum(sign.(g1))
@@ -198,6 +210,7 @@ end
         opStd = makeF(;dim=3, physics=physics, imgcondition="standard");
         opFwi = makeF(;dim=3, physics=physics, imgcondition="FWI");
         opRtm = makeF(;dim=3, physics=physics, imgcondition="RTM");
+        opMix = makeF(;dim=3, physics=physics, imgcondition="MIX", RTM_weight=0.25);
 
         vw = 1500 .* ones(domain(opStd)); # water velocity model
         va = 1500 .* ones(domain(opStd));
@@ -232,10 +245,17 @@ end
         J4 = jacobian!(opRtm,vb);
         g4 = J4' * r4;
 
+        # wavefield seperation mix
+        d5b = opStd * vb
+        r5 = d5b .- d1a
+        J5 = jacobian!(opMix,vb)
+        g5 = J5' * r5
+
         close(opStd)
         close(opFwi)
         close(opRtm)
-        
+        close(opMix)
+
         # remove pixels near source to eliminate very large amplitudes there
         nzero = 5
         g1[1:nzero,:,:,:] .= 0
@@ -248,7 +268,10 @@ end
 
        # RTM gradients differ
        @test norm(g3 .- g4) / norm(g3) > eps(Float32) 
-       
+
+       # MIX gradients differ
+       @test norm(g1 .- g5) / norm(g5) > eps(Float32)
+
        # FWI gradient longer wavelength (more positive) than standard gradient
        @show sum(sign.(g1)), sum(sign.(g2))
        @test sum(sign.(g2)) > sum(sign.(g1))
