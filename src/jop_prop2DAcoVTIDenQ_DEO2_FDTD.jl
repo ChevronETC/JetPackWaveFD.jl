@@ -34,6 +34,7 @@ function JetProp2DAcoVTIDenQ_DEO2_FDTD(;
         wavelet = WaveletCausalRicker(f=5.0),
         freesurface = false,
         imgcondition = "standard",
+        RTM_weight = 0.5,
         nthreads = Sys.CPU_THREADS,
         reportinterval = 500)
     # active and passive earth model properties.  The active set is in the model-space
@@ -113,10 +114,11 @@ function JetProp2DAcoVTIDenQ_DEO2_FDTD(;
     icdict = Dict(
         lowercase("standard") => WaveFD.ImagingConditionStandard(),
         lowercase("FWI") => WaveFD.ImagingConditionWaveFieldSeparationFWI(),
-        lowercase("RTM") => WaveFD.ImagingConditionWaveFieldSeparationRTM())
+        lowercase("RTM") => WaveFD.ImagingConditionWaveFieldSeparationRTM(),
+        lowercase("MIX") => WaveFD.ImagingConditionWaveFieldSeparationMIX())
 
     if lowercase(imgcondition) ∉ keys(icdict)
-        error("Supplied imaging condition 'imgcondition' is not in [standard, FWI, RTM]")
+        error("Supplied imaging condition 'imgcondition' is not in [standard, FWI, RTM, MIX]")
     end
         
     Jet(
@@ -159,6 +161,7 @@ function JetProp2DAcoVTIDenQ_DEO2_FDTD(;
             wavelet = wavelet,
             freesurface = freesurface,
             imgcondition = get(icdict, lowercase(imgcondition), WaveFD.ImagingConditionStandard()),
+            RTM_weight = RTM_weight, 
             nthreads = nthreads,
             reportinterval = reportinterval,
             stats = Dict{String,Float64}("MCells/s"=>0.0, "%io"=>0.0, "%inject/extract"=>0.0, "%imaging"=>0.0)))
@@ -393,7 +396,11 @@ Defaults for arguments are shown inside square brackets.
 * `imgcondition` ["standard"] Selects the type of imaging condition used. Choose from "standard", "FWI", 
     and "RTM". "FWI" and "RTM" will perform Kz wavenumber filtering prior to the imaging condition
     in order to promote long wavelengths (for FWI), or remove long wavelength backscattered energy (for 
-    RTM). Note the true adjoint only exists for "standard" imaging condition currently.
+    RTM). "MIX" mixes the FWI imaging condition using the parameter RTM_weight. Note the true adjoint 
+    only exists for "standard" imaging condition currently.
+* `RTM_weight` determines the balance of short wavelengths and long wavelengths in the imaging condition. 
+    A value of 0.0 is equivalent to the FWI imaging condition, a value of 0.5 is equivalent to the standard
+    imaging condtion, and a value of 1.0 is equivalent to the RTM imaging condition. 
 * `nthreads [Sys.CPU_THREADS]` The number of threads to use for OpenMP parallelization of the modeling.
 * `reportinterval [500]` The interval at which information about the propagtion is logged.
 
@@ -762,8 +769,18 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
     earth_ginsu["f"] .= kwargs[:f]
 
     δm_ginsu = Dict{String,Array{Float32,2}}()
+     # Temporary model updates if mixed imaging condition used. 
+    if kwargs[:imgcondition] ===  WaveFD.ImagingConditionWaveFieldSeparationMIX()
+        δm_RTM = Dict{String,Array{Float32,2}}()
+        δm_All = Dict{String,Array{Float32,2}}()
+    end
+
     for prop in keys(kwargs[:active_modelset])
         δm_ginsu[prop] = zeros(Float32, nz_ginsu, nx_ginsu)
+        if kwargs[:imgcondition] ===  WaveFD.ImagingConditionWaveFieldSeparationMIX()
+            δm_RTM[prop] = zeros(Float32, nz_ginsu, nx_ginsu)
+            δm_All[prop] = zeros(Float32, nz_ginsu, nx_ginsu)
+        end
     end
 
     ginsu_interior_range = interior(kwargs[:ginsu])
@@ -836,7 +853,24 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
             end
 
             # born accumulation
-            cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], kwargs[:imgcondition], δm_ginsu, wavefields)
+            if kwargs[:imgcondition] !== WaveFD.ImagingConditionWaveFieldSeparationMIX()
+                # Standard born accumulation for FWI, RTM, or standard imaging condition 
+                cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], kwargs[:imgcondition], δm_ginsu, wavefields)
+            else
+                # Born accumulation for mix imaging condition 
+                imcon =  WaveFD.ImagingConditionStandard()
+                cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], imcon, δm_All, wavefields)
+
+                imcon = WaveFD.ImagingConditionWaveFieldSeparationRTM()
+                cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], imcon, δm_RTM, wavefields)
+
+                weightAll = 1.0f0 - kwargs[:RTM_weight]
+                weightShort = 2.0f0*kwargs[:RTM_weight] - 1.0f0
+
+                for prop in keys(kwargs[:active_modelset])
+                    δm_ginsu[prop] = (δm_All[prop]  .* weightAll) .+ (δm_RTM[prop]  .* weightShort)
+                end
+            end
         end
     end
     for prop in keys(kwargs[:active_modelset])
