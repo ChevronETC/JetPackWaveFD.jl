@@ -30,8 +30,6 @@ function JetProp2DAcoVTIDenQ_DEO2_FDTD(;
         ntrec,
         nbz_cache = 512,
         nbx_cache = 8,
-        nbz_inject = 16,
-        nbx_inject = 16,
         nsponge = 50,
         wavelet = WaveletCausalRicker(f=5.0),
         freesurface = false,
@@ -158,8 +156,6 @@ function JetProp2DAcoVTIDenQ_DEO2_FDTD(;
             ntrec = ntrec,
             nbz_cache = nbz_cache,
             nbx_cache = nbx_cache,
-            nbz_inject = nbz_inject,
-            nbx_inject = nbx_inject,
             wavelet = wavelet,
             freesurface = freesurface,
             imgcondition = get(icdict, lowercase(imgcondition), WaveFD.ImagingConditionStandard()),
@@ -387,8 +383,6 @@ Defaults for arguments are shown inside square brackets.
     In general the cache block in the Z (fast) dimension should be ≥ the entire size of that dimension, 
     and the cache block size in the slower dimension is generally small in order to allow the entire
     block to fit in cache. 
-* `nbz_inject, nbx_inject = [16], [16]` The number of blocks in the Z and X dimensions for threading 
-    the wavefield injection.
 * `nsponge [50]` The number of grid cells to use for the absorbing boundary. For high fidelity modeling
     this should be > 60 grid points, but can be significantly smaller for some use cases like low frequency 
     full waveform inversion. 
@@ -459,34 +453,34 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
     wavelet_realization = realizewavelet(kwargs[:wavelet], kwargs[:sz], kwargs[:sx], kwargs[:st], kwargs[:dtmod], ntmod_wav)
 
     # Get source and receiver interpolation coefficients
-    local iz_sou, ix_sou, c_sou
+    local points_sou
     if kwargs[:interpmethod] == :hicks
-        iz_sou, ix_sou, c_sou = WaveFD.hickscoeffs(kwargs[:dz], kwargs[:dx], z0_ginsu, x0_ginsu, nz_ginsu, nx_ginsu, kwargs[:sz], kwargs[:sx])
+        points_sou = WaveFD.hickscoeffs(kwargs[:dz], kwargs[:dx], z0_ginsu, x0_ginsu, nz_ginsu, nx_ginsu, kwargs[:sz], kwargs[:sx])
     else
-        iz_sou, ix_sou, c_sou = WaveFD.linearcoeffs(kwargs[:dz], kwargs[:dx], z0_ginsu, x0_ginsu, nz_ginsu, nx_ginsu, kwargs[:sz], kwargs[:sx])
+        points_sou = WaveFD.linearcoeffs(kwargs[:dz], kwargs[:dx], z0_ginsu, x0_ginsu, nz_ginsu, nx_ginsu, kwargs[:sz], kwargs[:sx])
     end
 
     # Source blocking after scaled
-    c_sou_scaled = Array{Array{Float32,2},1}(undef, length(c_sou))
-    for i = 1:length(c_sou_scaled)
-        c_sou_scaled[i] = similar(c_sou[i])
-        for ix = 1:size(c_sou_scaled[i], 2), iz = 1:size(c_sou_scaled[i], 1)
-            jz = iz_sou[i][iz]
-            jx = ix_sou[i][ix]
-            c_sou[i][iz, ix] *= model_ginsu["b"][jz,jx] / kwargs[:dx] / kwargs[:dz]
-            c_sou_scaled[i][iz,ix] = c_sou[i][iz,ix] * kwargs[:dtmod]^2 * model_ginsu["v"][jz,jx]^2 / model_ginsu["b"][jz,jx]
-        end
+    points_sou_scaled = Vector{WaveFD.SourcePoint32}(undef, length(points_sou))
+    for i in eachindex(points_sou_scaled)
+        ju = points_sou[i].iu
+        c_sou = points_sou[i].c * model_ginsu["b"][ju] / kwargs[:dx] / kwargs[:dz]
+        c_sou_scaled = c_sou * kwargs[:dtmod]^2 * model_ginsu["v"][ju]^2 / model_ginsu["b"][ju]
+        points_sou[i] = WaveFD.SourcePoint32(ju, points_sou[i].ir, c_sou)
+        points_sou_scaled[i] = WaveFD.SourcePoint32(ju, points_sou[i].ir, c_sou_scaled)
     end
-    blks_sou = WaveFD.source_blocking(nz_ginsu, nx_ginsu, kwargs[:nbz_inject], kwargs[:nbx_inject], iz_sou, ix_sou, c_sou)
-    blks_sou_scaled = WaveFD.source_blocking(nz_ginsu, nx_ginsu, kwargs[:nbz_inject], kwargs[:nbx_inject], iz_sou, ix_sou, c_sou_scaled)
+    blks_sou = WaveFD.source_blocking(points_sou, kwargs[:nthreads])
+    blks_sou_scaled = WaveFD.source_blocking(points_sou_scaled, kwargs[:nthreads])
 
-    local iz_rec, ix_rec, c_rec
+    local blks_rec
     if length(d) > 0
+        local points_rec
         if kwargs[:interpmethod] == :hicks
-            iz_rec, ix_rec, c_rec = WaveFD.hickscoeffs(kwargs[:dz], kwargs[:dx], z0_ginsu, x0_ginsu, nz_ginsu, nx_ginsu, kwargs[:rz], kwargs[:rx])
+            points_rec = WaveFD.hickscoeffs(kwargs[:dz], kwargs[:dx], z0_ginsu, x0_ginsu, nz_ginsu, nx_ginsu, kwargs[:rz], kwargs[:rx])
         else
-            iz_rec, ix_rec, c_rec = WaveFD.linearcoeffs(kwargs[:dz], kwargs[:dx], z0_ginsu, x0_ginsu, nz_ginsu, nx_ginsu, kwargs[:rz], kwargs[:rx])
+            points_rec = WaveFD.linearcoeffs(kwargs[:dz], kwargs[:dx], z0_ginsu, x0_ginsu, nz_ginsu, nx_ginsu, kwargs[:rz], kwargs[:rx])
         end
+        blks_rec = WaveFD.receiver_blocking(points_rec, kwargs[:nthreads])
     end
 
     # disk-file for source-field serialization
@@ -509,7 +503,7 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
 
     itskip = round(Int, kwargs[:dtrec]/kwargs[:dtmod])
     time1 = time()
-    cumtime_io, cumtime_ex, cumtime_pr = 0.0, 0.0, 0.0
+    cumtime_io, cumtime_in, cumtime_ex, cumtime_pr = 0.0, 0.0, 0.0, 0.0
     kwargs[:reportinterval] == 0 || @info "nonlinear forward on $(gethostname()), srcfieldfile=$(kwargs[:srcfieldfile])"
 
     dinterp = zeros(Float32, (ntmod_wav - it0 + 1), size(d, 2))
@@ -517,7 +511,7 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
     set_zero_subnormals(true)
     for it = 1:ntmod_wav
         if kwargs[:reportinterval] != 0 && (it % kwargs[:reportinterval] == 0 || it == ntmod_wav)
-            JopProp2DAcoVTIDenQ_DEO2_FDTD_write_history_nl(kwargs[:ginsu], it, ntmod_wav, time()-time1, cumtime_io, cumtime_ex, cumtime_pr, wavefields["pcur"], d)
+            JopProp2DAcoVTIDenQ_DEO2_FDTD_write_history_nl(kwargs[:ginsu], it, ntmod_wav, time()-time1, cumtime_io, cumtime_in, cumtime_ex, cumtime_pr, wavefields["pcur"], d)
         end
 
         # propagate and wavefield swap
@@ -526,19 +520,19 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_nonlinearforward!(d::AbstractArray, m::Ab
         wavefields["mcur"],wavefields["mold"] = wavefields["mold"],wavefields["mcur"]
 
         # inject source wavelet
-        cumtime_ex += @elapsed begin
-            WaveFD.injectdata!(wavefields["pcur"], blks_sou_scaled, wavelet_realization, it)
-            WaveFD.injectdata!(wavefields["pspace"], blks_sou, wavelet_realization, it)
+        cumtime_in += @elapsed begin
+            WaveFD.injectdata!(wavefields["pcur"], blks_sou_scaled, wavelet_realization, it, kwargs[:nthreads])
+            WaveFD.injectdata!(wavefields["pspace"], blks_sou, wavelet_realization, it, kwargs[:nthreads])
         end
 
         # extract data at receivers
         if length(d) > 0 && it >= it0
-            cumtime_ex += @elapsed WaveFD.extractdata!(dinterp, wavefields["pold"], it - it0 + 1, iz_rec, ix_rec, c_rec)
+            cumtime_ex += @elapsed WaveFD.extractdata!(dinterp, wavefields["pold"], it - it0 + 1, blks_rec, kwargs[:nthreads])
         end
 
         if it >= it0 && rem(it-it0,itskip) == 0
             # scale spatial derivatives by v^2/b to make them temporal derivatives
-            cumtime_io += @elapsed WaveFD.scale_spatial_derivatives!(p)
+            cumtime_pr += @elapsed WaveFD.scale_spatial_derivatives!(p)
 
             if kwargs[:srcfieldfile] != ""
                 cumtime_io += @elapsed for active_wavefield in active_wavefields
@@ -581,22 +575,23 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_f!(d::AbstractArray, m::AbstractArray{Flo
         kwargs[:srcfieldhost][] = gethostname()
     else
         field = Array{Float32}(undef,size(kwargs[:ginsu], interior=kwargs[:isinterior]))
-        local iz, ix, c
+        local points
         if kwargs[:interpmethod] == :hicks
-            iz, ix, c = WaveFD.hickscoeffs(kwargs[:dz], kwargs[:dx], 
+            points = WaveFD.hickscoeffs(kwargs[:dz], kwargs[:dx], 
                 origin(kwargs[:ginsu], interior=kwargs[:isinterior])..., 
                 size(kwargs[:ginsu], interior=kwargs[:isinterior])..., kwargs[:rz], kwargs[:rx])
         else
-            iz, ix, c = WaveFD.linearcoeffs(kwargs[:dz], kwargs[:dx], 
+            points = WaveFD.linearcoeffs(kwargs[:dz], kwargs[:dx], 
                 origin(kwargs[:ginsu], interior=kwargs[:isinterior])..., 
                 size(kwargs[:ginsu], interior=kwargs[:isinterior])..., kwargs[:rz], kwargs[:rx])
         end
+        blks = WaveFD.receiver_blocking(points, kwargs[:nthreads])
 
         iofield = open("$(kwargs[:srcfieldfile])-pold")
         open(kwargs[:compressor]["pold"])
         for it = 1:kwargs[:ntrec]
             WaveFD.compressedread!(iofield, kwargs[:compressor]["pold"], it, field)
-            WaveFD.extractdata!(d, field, it, iz, ix, c)
+            WaveFD.extractdata!(d, field, it, blks, kwargs[:nthreads])
         end
 
         # interpolate to dtmod and back so amplitudes match data created by nonlinear forward operator
@@ -652,12 +647,13 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_df!(δd::AbstractArray, δm::AbstractArra
     ginsu_interior_range = interior(kwargs[:ginsu])
 
     # pre-compute receiver interpolation coefficients
-    local iz,ix,c
+    local points
     if kwargs[:interpmethod] == :hicks
-        iz, ix, c = WaveFD.hickscoeffs(kwargs[:dz], kwargs[:dx], z0_ginsu, x0_ginsu, nz_ginsu, nx_ginsu, kwargs[:rz], kwargs[:rx])
+        points = WaveFD.hickscoeffs(kwargs[:dz], kwargs[:dx], z0_ginsu, x0_ginsu, nz_ginsu, nx_ginsu, kwargs[:rz], kwargs[:rx])
     else
-        iz, ix, c = WaveFD.linearcoeffs(kwargs[:dz], kwargs[:dx], z0_ginsu, x0_ginsu, nz_ginsu, nx_ginsu, kwargs[:rz], kwargs[:rx])
+        points = WaveFD.linearcoeffs(kwargs[:dz], kwargs[:dx], z0_ginsu, x0_ginsu, nz_ginsu, nx_ginsu, kwargs[:rz], kwargs[:rx])
     end
+    blks = WaveFD.receiver_blocking(points, kwargs[:nthreads])
     
     # if necessary, re-run the nonlinear forward
     isvalid, _chksum = isvalid_srcfieldfile(kwargs[:mₒ], kwargs[:srcfieldhost][], kwargs[:srcfieldfile]*"-pold", kwargs[:chksum][])
@@ -713,7 +709,7 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_df!(δd::AbstractArray, δm::AbstractArra
         end
 
         # extract data at receivers
-        cumtime_ex += @elapsed WaveFD.extractdata!(δdinterp, pold, it, iz, ix, c)
+        cumtime_ex += @elapsed WaveFD.extractdata!(δdinterp, pold, it, blks, kwargs[:nthreads])
     end
     set_zero_subnormals(false)
     JopProp2DAcoVTIDenQ_DEO2_FDTD_stats(kwargs[:stats], kwargs[:ginsu], ntmod, time()-time1, 
@@ -773,20 +769,18 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
     ginsu_interior_range = interior(kwargs[:ginsu])
 
     # Get receiver interpolation coefficients
-    local iz, ix, c
+    local points
     if kwargs[:interpmethod] == :hicks
-        iz, ix, c = WaveFD.hickscoeffs(kwargs[:dz], kwargs[:dx], z0_ginsu, x0_ginsu, nz_ginsu, nx_ginsu, kwargs[:rz], kwargs[:rx])
+        points = WaveFD.hickscoeffs(kwargs[:dz], kwargs[:dx], z0_ginsu, x0_ginsu, nz_ginsu, nx_ginsu, kwargs[:rz], kwargs[:rx])
     else
-        iz, ix, c = WaveFD.linearcoeffs(kwargs[:dz], kwargs[:dx], z0_ginsu, x0_ginsu, nz_ginsu, nx_ginsu, kwargs[:rz], kwargs[:rx])
+        points = WaveFD.linearcoeffs(kwargs[:dz], kwargs[:dx], z0_ginsu, x0_ginsu, nz_ginsu, nx_ginsu, kwargs[:rz], kwargs[:rx])
     end
-    for i = 1:length(c)
-        for jx = 1:size(c[i], 2), jz = 1:size(c[i], 1)
-            kz = iz[i][jz]
-            kx = ix[i][jx]
-            c[i][jz,jx] *= kwargs[:dtmod]^2 * earth_ginsu["v"][kz,kx]^2 / earth_ginsu["b"][kz,kx]
-        end
+    for i in eachindex(points)
+        ju = points[i].iu
+        c = points[i].c * kwargs[:dtmod]^2 * earth_ginsu["v"][ju]^2 / earth_ginsu["b"][ju]
+        points[i] = WaveFD.SourcePoint32(ju, points[i].ir, c)
     end
-    blks = WaveFD.source_blocking(nz_ginsu, nx_ginsu, kwargs[:nbz_inject], kwargs[:nbx_inject], iz, ix, c)
+    blks = WaveFD.source_blocking(points, kwargs[:nthreads])
 
     ntmod = WaveFD.default_ntmod(kwargs[:dtrec], kwargs[:dtmod], kwargs[:ntrec])
 
@@ -827,7 +821,7 @@ function JopProp2DAcoVTIDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
         pcur,pold = pold,pcur
 
         # inject receiver data
-        cumtime_ex += @elapsed WaveFD.injectdata!(pcur, blks, δdinterp, it)
+        cumtime_ex += @elapsed WaveFD.injectdata!(pcur, blks, δdinterp, it, kwargs[:nthreads])
 
         if rem(it-1,itskip) == 0
             # read source field from disk
@@ -906,17 +900,18 @@ Jets.perfstat(J::T) where {D,R,T<:Jet{D,R,typeof(JopProp2DAcoVTIDenQ_DEO2_FDTD_f
     @info "Prop2DAcoVTIDenQ_DEO2_FDTD, $mode, time step $kt of $nt $mcells MCells/s (IO=$IO, EX=$EX, IM=$IM, PR=$PR) -- rms d,p; $rmsd $rmsp"
 end
 
-@inline function JopProp2DAcoVTIDenQ_DEO2_FDTD_write_history_nl(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_ex, cumtime_pr, pcur, d::AbstractArray{T}) where {T}
+@inline function JopProp2DAcoVTIDenQ_DEO2_FDTD_write_history_nl(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_in, cumtime_ex, cumtime_pr, pcur, d::AbstractArray{T}) where {T}
     kt = fmt("5d", it)
     nt = fmt("5d", ntmod)
     mcells = fmt("7.2f", megacells_per_second(size(ginsu)..., it-1, cumtime_total))
     IO = fmt("5.2f", cumtime_total > 0 ? cumtime_io/cumtime_total*100.0 : 0.0)
+    IN = fmt("5.2f", cumtime_total > 0 ? cumtime_in/cumtime_total*100.0 : 0.0)
     EX = fmt("5.2f", cumtime_total > 0 ? cumtime_ex/cumtime_total*100.0 : 0.0)
     PR = fmt("5.2f", cumtime_total > 0 ? cumtime_pr/cumtime_total*100.0 : 0.0)
     rmsd = fmt("10.4e", length(d) > 0 ? sqrt(norm(d)^2 / length(d)) : zero(T))
     rmsp = fmt("10.4e", sqrt(norm(pcur)^2 / length(pcur)))
 
-    @info "Prop2DAcoVTIDenQ_DEO2_FDTD, nonlinear forward, time step $kt of $nt $mcells MCells/s (IO=$IO, EX=$EX, PR=$PR) -- rms d,p; $rmsd $rmsp"
+    @info "Prop2DAcoVTIDenQ_DEO2_FDTD, nonlinear forward, time step $kt of $nt $mcells MCells/s (IO=$IO, IN=$IN, EX=$EX, PR=$PR) -- rms d,p; $rmsd $rmsp"
 end
 
 function Base.close(jet::Jet{D,R,typeof(JopProp2DAcoVTIDenQ_DEO2_FDTD_f!)}) where {D,R}
