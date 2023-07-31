@@ -128,10 +128,11 @@ function JetProp2DAcoIsoDenQ_DEO2_FDTD(;
     icdict = Dict(
         lowercase("standard") => WaveFD.ImagingConditionStandard(),
         lowercase("FWI") => WaveFD.ImagingConditionWaveFieldSeparationFWI(),
-        lowercase("RTM") => WaveFD.ImagingConditionWaveFieldSeparationRTM())
+        lowercase("RTM") => WaveFD.ImagingConditionWaveFieldSeparationRTM(),
+        lowercase("MIX") => WaveFD.ImagingConditionWaveFieldSeparationMIX())
 
     if lowercase(imgcondition) ∉ keys(icdict)
-        error("Supplied imaging condition 'imgcondition' is not in [standard, FWI, RTM]")
+        error("Supplied imaging condition 'imgcondition' is not in [standard, FWI, RTM, MIX]")
     end
         
     Jet(
