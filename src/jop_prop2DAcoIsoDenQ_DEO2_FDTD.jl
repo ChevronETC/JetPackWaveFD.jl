@@ -803,7 +803,11 @@ function JopProp2DAcoIsoDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
             end
 
             # born accumulation
-            cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], kwargs[:imgcondition], δm_ginsu, wavefields)
+            if kwargs[:imgcondition] === WaveFD.ImagingConditionStandard() || kwargs[:imgcondition] === WaveFD.ImagingConditionFWI() || kwargs[:imgcondition] === WaveFD.ImagingConditionRTM()
+                cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], kwargs[:imgcondition], δm_ginsu, wavefields)
+            else
+                cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], kwargs[:imgcondition], δm_ginsu, wavefields,0.0)
+            end
         end
     end
     for prop in keys(kwargs[:active_modelset])
