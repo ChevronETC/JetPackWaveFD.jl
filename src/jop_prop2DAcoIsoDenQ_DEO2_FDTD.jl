@@ -804,7 +804,7 @@ function JopProp2DAcoIsoDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
             end
 
             # born accumulation
-            if kwargs[:imgcondition] === WaveFD.ImagingConditionStandard() || kwargs[:imgcondition] === WaveFD.ImagingConditionFWI() || kwargs[:imgcondition] === WaveFD.ImagingConditionRTM()
+            if kwargs[:imgcondition] === WaveFD.ImagingConditionStandard() || kwargs[:imgcondition] === WaveFD.ImagingConditionWaveFieldSeparationFWI || kwargs[:imgcondition] === WaveFD.ImagingConditionWaveFieldSeparationFWI()
                 cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], kwargs[:imgcondition], δm_ginsu, wavefields)
             else
                 cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], kwargs[:imgcondition], δm_ginsu, wavefields,0.0)
