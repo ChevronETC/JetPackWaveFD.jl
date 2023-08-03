@@ -22,7 +22,7 @@ Formatting = "0.4"
 JetPack = "1"
 Jets = "1"
 SpecialFunctions = "0.10"
-WaveFD = "0.5.1"
+WaveFD = "0.6.0"
 julia = "1"
 
 [extras]
