@@ -815,11 +815,17 @@ function JopProp3DAcoTTIDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
     earth_ginsu["f"] .= kwargs[:f]
 
     δm_ginsu = Dict{String,Array{Float32,3}}()
+    # Temporary model updates if mixed imaging condition used. 
+    if kwargs[:imgcondition] ===  WaveFD.ImagingConditionWaveFieldSeparationMIX()
+        δm_RTM = Dict{String,Array{Float32,3}}()
+        δm_All = Dict{String,Array{Float32,3}}()
+    end
+
     for prop in keys(kwargs[:active_modelset])
         δm_ginsu[prop] = zeros(Float32, nz_ginsu, ny_ginsu, nx_ginsu)
-        if isa(kwargs[:imgcondition], WaveFD.ImagingConditionWaveFieldSeparationMIX)
-            δm_ginsu["rtm_$prop"] = zeros(Float32, nz_ginsu, ny_ginsu, nx_ginsu)
-            δm_ginsu["all_$prop"] = zeros(Float32, nz_ginsu, ny_ginsu, nx_ginsu)
+        if kwargs[:imgcondition] ===  WaveFD.ImagingConditionWaveFieldSeparationMIX()
+            δm_RTM[prop] = zeros(Float32, nz_ginsu, ny_ginsu, nx_ginsu)
+            δm_All[prop] = zeros(Float32, nz_ginsu, ny_ginsu, nx_ginsu)
         end
     end
 
@@ -895,19 +901,30 @@ function JopProp3DAcoTTIDenQ_DEO2_FDTD_df′!(δm::AbstractArray, δd::AbstractA
             end
 
             # born accumulation
-            cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], kwargs[:imgcondition], δm_ginsu, wavefields)
+            if kwargs[:imgcondition] !== WaveFD.ImagingConditionWaveFieldSeparationMIX()
+                # Standard born accumulation for FWI, RTM, or standard imaging condition 
+                cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], kwargs[:imgcondition], δm_ginsu, wavefields)
+            else
+                # Born accumulation for mix imaging condition 
+                imcon =  WaveFD.ImagingConditionStandard()
+                cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], imcon, δm_All, wavefields)
+
+                imcon = WaveFD.ImagingConditionWaveFieldSeparationRTM()
+                cumtime_im += @elapsed WaveFD.adjointBornAccumulation!(p, kwargs[:modeltype], imcon, δm_RTM, wavefields)
+
+                weightAll = 1.0f0 - kwargs[:RTM_weight]
+                weightShort = 2.0f0*kwargs[:RTM_weight] - 1.0f0
+
+                for prop in keys(kwargs[:active_modelset])
+                    δm_ginsu[prop] = (δm_All[prop]  .* weightAll) .+ (δm_RTM[prop]  .* weightShort)
+                end
+            end
         end
     end
-    set_zero_subnormals(false)
-
     for prop in keys(kwargs[:active_modelset])
-        if isa(kwargs[:imgcondition], WaveFD.ImagingConditionWaveFieldSeparationMIX)
-            weight_all = 1 - kwargs[:RTM_weight]
-            weight_short = 2*kwargs[:RTM_weight] - 1
-            δm_ginsu[prop] .= (δm_ginsu["all_$prop"]  .* weight_all) .+ (δm_ginsu["rtm_$prop"]  .* weight_short)
-        end
         δm_ginsu[prop] .*= kwargs[:dtrec] / kwargs[:dtmod]
     end
+    set_zero_subnormals(false)
     JopProp3DAcoTTIDenQ_DEO2_FDTD_stats(kwargs[:stats], kwargs[:ginsu], ntmod, time()-time1, cumtime_io, cumtime_ex, cumtime_im)
 
     # undo ginsu
