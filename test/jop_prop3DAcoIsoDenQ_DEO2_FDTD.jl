@@ -1,4 +1,4 @@
-using Formatting, FFTW, Jets, JetPackWaveFD, LinearAlgebra, SpecialFunctions, Statistics, Test, WaveFD
+using FFTW, Jets, JetPackWaveFD, LinearAlgebra, SpecialFunctions, Statistics, Test, WaveFD
 
 modeltypes = (WaveFD.Prop3DAcoIsoDenQ_DEO2_FDTD_Model_V, WaveFD.Prop3DAcoIsoDenQ_DEO2_FDTD_Model_B, WaveFD.Prop3DAcoIsoDenQ_DEO2_FDTD_Model_VB)
 

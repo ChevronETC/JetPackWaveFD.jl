@@ -904,29 +904,29 @@ Jets.perfstat(J::T) where {D,R,T<:Jet{D,R,typeof(JopProp2DAcoVTIDenQ_DEO2_FDTD_f
 
 @inline function JopProp2DAcoVTIDenQ_DEO2_FDTD_write_history_ln(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_ex, cumtime_im, cumtime_pr, pcur, d::AbstractArray{T}, mode) where {T}
     jt = occursin("adjoint", mode) ? ntmod-it+1 : it
-    kt = fmt("5d", jt)
-    nt = fmt("5d", ntmod)
-    mcells = fmt("7.2f", megacells_per_second(size(ginsu)..., jt-1, cumtime_total))
-    IO = fmt("5.2f", cumtime_total > 0 ? cumtime_io/cumtime_total*100.0 : 0.0)
-    EX = fmt("5.2f", cumtime_total > 0 ? cumtime_ex/cumtime_total*100.0 : 0.0)
-    IM = fmt("5.2f", cumtime_total > 0 ? cumtime_im/cumtime_total*100.0 : 0.0)
-    PR = fmt("5.2f", cumtime_total > 0 ? cumtime_pr/cumtime_total*100.0 : 0.0)
-    rmsd = fmt("10.4e", length(d) > 0 ? sqrt(norm(d)^2 / length(d)) : zero(T))
-    rmsp = fmt("10.4e", sqrt(norm(pcur)^2 / length(pcur)))
+    kt = cfmt("%5d", jt)
+    nt = cfmt("%5d", ntmod)
+    mcells = cfmt("%7.2f", megacells_per_second(size(ginsu)..., jt-1, cumtime_total))
+    IO = cfmt("%5.2f", cumtime_total > 0 ? cumtime_io/cumtime_total*100.0 : 0.0)
+    EX = cfmt("%5.2f", cumtime_total > 0 ? cumtime_ex/cumtime_total*100.0 : 0.0)
+    IM = cfmt("%5.2f", cumtime_total > 0 ? cumtime_im/cumtime_total*100.0 : 0.0)
+    PR = cfmt("%5.2f", cumtime_total > 0 ? cumtime_pr/cumtime_total*100.0 : 0.0)
+    rmsd = cfmt("%10.4e", length(d) > 0 ? sqrt(norm(d)^2 / length(d)) : zero(T))
+    rmsp = cfmt("%10.4e", sqrt(norm(pcur)^2 / length(pcur)))
 
     @info "Prop2DAcoVTIDenQ_DEO2_FDTD, $mode, time step $kt of $nt $mcells MCells/s (IO=$IO, EX=$EX, IM=$IM, PR=$PR) -- rms d,p; $rmsd $rmsp"
 end
 
 @inline function JopProp2DAcoVTIDenQ_DEO2_FDTD_write_history_nl(ginsu, it, ntmod, cumtime_total, cumtime_io, cumtime_in, cumtime_ex, cumtime_pr, pcur, d::AbstractArray{T}) where {T}
-    kt = fmt("5d", it)
-    nt = fmt("5d", ntmod)
-    mcells = fmt("7.2f", megacells_per_second(size(ginsu)..., it-1, cumtime_total))
-    IO = fmt("5.2f", cumtime_total > 0 ? cumtime_io/cumtime_total*100.0 : 0.0)
-    IN = fmt("5.2f", cumtime_total > 0 ? cumtime_in/cumtime_total*100.0 : 0.0)
-    EX = fmt("5.2f", cumtime_total > 0 ? cumtime_ex/cumtime_total*100.0 : 0.0)
-    PR = fmt("5.2f", cumtime_total > 0 ? cumtime_pr/cumtime_total*100.0 : 0.0)
-    rmsd = fmt("10.4e", length(d) > 0 ? sqrt(norm(d)^2 / length(d)) : zero(T))
-    rmsp = fmt("10.4e", sqrt(norm(pcur)^2 / length(pcur)))
+    kt = cfmt("%5d", it)
+    nt = cfmt("%5d", ntmod)
+    mcells = cfmt("%7.2f", megacells_per_second(size(ginsu)..., it-1, cumtime_total))
+    IO = cfmt("%5.2f", cumtime_total > 0 ? cumtime_io/cumtime_total*100.0 : 0.0)
+    IN = cfmt("%5.2f", cumtime_total > 0 ? cumtime_in/cumtime_total*100.0 : 0.0)
+    EX = cfmt("%5.2f", cumtime_total > 0 ? cumtime_ex/cumtime_total*100.0 : 0.0)
+    PR = cfmt("%5.2f", cumtime_total > 0 ? cumtime_pr/cumtime_total*100.0 : 0.0)
+    rmsd = cfmt("%10.4e", length(d) > 0 ? sqrt(norm(d)^2 / length(d)) : zero(T))
+    rmsp = cfmt("%10.4e", sqrt(norm(pcur)^2 / length(pcur)))
 
     @info "Prop2DAcoVTIDenQ_DEO2_FDTD, nonlinear forward, time step $kt of $nt $mcells MCells/s (IO=$IO, IN=$IN, EX=$EX, PR=$PR) -- rms d,p; $rmsd $rmsp"
 end
