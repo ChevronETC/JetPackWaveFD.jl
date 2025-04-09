@@ -1,6 +1,6 @@
 name = "JetPackWaveFD"
 uuid = "30ac78e6-0b88-494d-b61b-9674962a0c3e"
-version = "0.7.1"
+version = "0.8.0"
 
 [deps]
 CRC32c = "8bf52ea8-c179-5cab-976a-9e18b702a9bc"
@@ -19,7 +19,7 @@ WaveFD = "44f9e87b-acd6-44e6-b5b0-e1db9a6b2dd4"
 DistributedJets = "1"
 DistributedOperations = "1"
 Format = "1"
-JetPack = "1"
+JetPack = "1,2"
 Jets = "1"
 Statistics = "1"
 WaveFD = "0.6.2, 0.7"
