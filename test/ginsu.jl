@@ -64,7 +64,7 @@ function test_ginsu_super(g::Ginsu{3}, x, xsuper, interior)
     end
 end
 
-@test_skip @testset "Ginsu 2D" begin
+@testset "Ginsu 2D" begin
     nz, nx = 100, 200
     dz, dx = 10.0, 20.0
     z0, x0 = 0.0, 0.0
@@ -99,7 +99,7 @@ end
     end
 end
 
-@test_skip @testset "Ginsu 2D Array Src&Rec" begin
+@testset "Ginsu 2D Array Src&Rec" begin
     nz, nx = 100, 200
     dz, dx = 10.0, 20.0
     z0, x0 = 0.0, 0.0
@@ -134,7 +134,7 @@ end
     end
 end
 
-@test_skip @testset "Ginsu 3D" begin
+@testset "Ginsu 3D" begin
     nz, ny, nx = 100, 30, 200
     dz, dy, dx = 10.0, 10.0, 20.0
     z0, y0, x0 = 0.0, 0.0, 0.0
@@ -169,7 +169,7 @@ end
     end
 end
 
-@test_skip @testset "Ginsu 3D Array Src&Rec" begin
+@testset "Ginsu 3D Array Src&Rec" begin
     nz, ny, nx = 100, 30, 200
     dz, dy, dx = 10.0, 10.0, 20.0
     z0, y0, x0 = 0.0, 0.0, 0.0
@@ -204,7 +204,7 @@ end
     end
 end
 
-@test_skip @testset "Ginsu Vector Width" begin
+@testset "Ginsu Vector Width" begin
     nz, nx = 100, 200
     dz, dx = 10.0, 20.0
     z0, x0 = 0.0, 0.0
@@ -219,7 +219,7 @@ end
     end
 end
 
-@test_skip @testset "Ginsu dot product" begin
+@testset "Ginsu dot product" begin
     rz = 750.0*ones(size(75:125))
     rx = 10.0*collect(75:125)
     ginsu = Ginsu((0.0,0.0), (10.0,10.0), (201,201), ([1000.0],[1000.0]), (rz,rx), ((500.0,500.0),(500.0,500.0)), ((50,50),(50,50)), T=Float64)
@@ -246,7 +246,7 @@ end
     @test lhs ≈ rhs rtol=1e-5
 end
 
-@test_skip @testset "Ginsu, absolute constructor" begin
+@testset "Ginsu, absolute constructor" begin
     ginsu = Ginsu((0.0,0.0), (10.0,10.0), (201,201), (-100.0:200.0,-50.0:150.0), ((50,50),(50,50)))
     @test lextents(ginsu, interior=false) == (-59:76,-54:73)
     @test lextents(ginsu, interior=true) == (-9:26,-4:23)
