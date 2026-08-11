@@ -215,6 +215,94 @@ function Ginsu(r0::NTuple{N,Real}, dr::NTuple{N,Real}, nr::NTuple{N,Int}, apertu
     Ginsu(A, B, C, D, r0, dr)
 end
 
+"""
+    g = Ginsu(z0, dr, nz, sour, recr, padr, ndamp; dims=(:z,:y,:x), stencilhalfwidth=2, vector_width=8)
+
+Create a strict Ginsu object directly from source-receiver locations.
+The xy domain of the underlying padding operators will be a box enclosing the source-receiver locations augmented with padding and damping.
+Those padding operators will become no-op in the x,y directions (modulo the damping for the `A` and `B` members),
+meaning that the domain and range for those operators would be the same in the xy directions.
+In the z direction, the padding operator depends on the supplied origin, number of cells, padding, damping, and stencil half-width (no dependence on source-receiver locations).
+xy padding is interpreted differently in this constructor. It is counted from the min-max source-receiver locations, regardless of their midpoints.
+
+# required parameters which are different in type or interpretation from the original Ginsu constructor
+* `z0::Real` origin in the z dimension
+* `nz::Int` cell counts in the z dimension
+* `padr::NTuple{N,NTuple{Real,Real}}` padding beyond the source-receiver box in xy dimensions, and beyond the model top and bottom in the z direction.
+"""
+function Ginsu(
+        z0::Real,
+        dr::NTuple{N,Real},
+        nz::Int64,
+        sour::NTuple{N,AbstractArray{Float64,1}},
+        recr::NTuple{N,AbstractArray{Float64,1}},
+        padr::NTuple{N,Tuple{Real,Real}},
+        ndamp::NTuple{N,Tuple{Int,Int}};
+        T::DataType = Float32,
+        dims::NTuple=(:z,:y,:x),
+        stencilhalfwidth::Int=0,
+        vector_width::Int = 8) where N
+    nrec = length(recr[1])
+    nsrc = length(sour[1])
+    for idim = 2:N
+        @assert length(recr[idim]) == nrec
+        @assert length(sour[idim]) == nsrc
+    end
+
+    lextrng = Array{UnitRange{Int64}}(undef, N)
+    lintrng = Array{UnitRange{Int64}}(undef, N)
+
+    r0 = zeros(Real, N)
+    nr = zeros(Int64, N)
+    for idim = 1:N
+        # source and receiver coords for this dimension:
+        reci = recr[idim]
+        soui = sour[idim]
+
+        if dims[idim] == :z
+            r0[idim] = z0
+            nr[idim] = nz
+            lb, ub = r0[idim] - padr[idim][1] - ndamp[idim][1]*dr[idim] - stencilhalfwidth*dr[idim], r0[idim] + (nr[idim]-1+ndamp[idim][2])*dr[idim] + padr[idim][2]
+        else
+            # compute the min max coordinates
+            lb, ub = min(minimum(soui),minimum(reci)), max(maximum(soui),maximum(reci))
+
+            # add padding and damping region
+            lb -= padr[idim][1] + ndamp[idim][1]*dr[idim]
+            ub += padr[idim][2] + ndamp[idim][2]*dr[idim]
+
+            r0[idim] = lb
+            nr[idim] = ceil(Int, (ub - r0[idim]) / dr[idim]) + 1
+        end
+
+        # integer range:
+        idx_lb, idx_ub = floor(Int, (lb - r0[idim]) / dr[idim]) + 1, ceil(Int, (ub - r0[idim]) / dr[idim]) + 1
+
+        # ensure lengths are a scalar multiple of vector_width (for vector alignment)
+        n = idx_ub - idx_lb + 1
+        d,r = divrem(n,vector_width)
+        if r != 0
+            idx_ub = idx_lb + (d+1)*vector_width - 1
+            if dims[idim] !== :z
+                nr[idim] = idx_ub
+            end
+        end
+
+        # interior/exterior ranges
+        lextrng[idim] = idx_lb:idx_ub
+        lintrng[idim] = (idx_lb+ndamp[idim][1]):(idx_ub-ndamp[idim][2])
+    end
+
+    nrTuple = ntuple(i->nr[i], N)
+
+    A = JopPad(JetSpace(T,nrTuple), ntuple(i->lintrng[i], N)..., extend=true)
+    B = JopPad(JetSpace(T,nrTuple), ntuple(i->lintrng[i], N)..., extend=false)
+    C = JopPad(JetSpace(T,nrTuple), ntuple(i->lextrng[i], N)..., extend=true)
+    D = JopPad(JetSpace(T,nrTuple), ntuple(i->lextrng[i], N)..., extend=false)
+
+    Ginsu(A, B, C, D, ntuple(i->Float64(r0[i]), N), ntuple(i->Float64(dr[i]), N))
+end
+
 function _op(ginsu::Ginsu; extend=false, interior=false)
     interior  && extend  && return ginsu.A
     interior  && !extend && return ginsu.B
@@ -279,6 +367,22 @@ function interior(ginsu::Ginsu{N}) where {N}
         end, Val{N}())
 end
 
+"""
+Check if source and receivers are within the bounds of the ginsu
+"""
+function check_sr_inside_ginsu(ginsu::Ginsu{N}, sour::NTuple{N,AbstractArray{Float64,1}}, recr::NTuple{N,AbstractArray{Float64,1}}) where N
+    for idim = 1:N
+        reci = recr[idim]
+        soui = sour[idim]
+        lb, ub = min(minimum(soui),minimum(reci)), max(maximum(soui),maximum(reci))
+        orig = origin(ginsu)
+        dr = ginsu.δr
+        orig[idim] <= lb || return false
+        (orig[idim] + (size(ginsu,idim) - 1) * dr[idim] >= ub) || return false
+    end
+    return true
+end
+
 Base.size(gn::Ginsu, i::Int; interior=false) = length(state(_op(gn; interior=interior)).pad[i])
 Base.size(gn::Ginsu{N}; interior=false) where {N} = ntuple(i->size(gn, i; interior=interior), Val{N}())
 
@@ -291,4 +395,4 @@ pextents(gn::Ginsu{N}; interior=false) where {N} = ntuple(i->pextents(gn,i;inter
 origin(gn::Ginsu, i::Int; interior=false) = gn.rₒ[i] + (first(lextents(gn,i;interior=interior))-1)*gn.δr[i]
 origin(gn::Ginsu{N}; interior=false) where {N} = ntuple(i->origin(gn, i;interior=interior)[1], Val{N}())
 
-export Ginsu, lextents, pextents, origin, interior, sub, sub!, super!
+export Ginsu, lextents, pextents, origin, interior, check_sr_inside_ginsu, sub, sub!, super!

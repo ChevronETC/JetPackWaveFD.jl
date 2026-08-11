@@ -1,4 +1,4 @@
-using JetPackWaveFD, Random, Test
+using Jets, JetPackWaveFD, Random, Test
 
 function test_ginsu_sub(g::Ginsu{2}, x, xsub, interior, extend)
     N1 = size(x,1)
@@ -253,4 +253,20 @@ end
 
     map(i->@test(pextents(ginsu, interior=false)[i] ≈ (-600.0:10.0:750.0,-550.0:10.0:720.0)[i]), 1:2)
     map(i->@test(pextents(ginsu, interior=true)[i] ≈ (-100.0:10.0:250.0,-50.0:10.0:220.0)[i]), 1:2)
+end
+
+@testset "Ginsu, strict constructor 3D" begin
+    nz = 100
+    dz, dy, dx = 10.0, 10.0, 20.0
+    z0 = 0.0
+    sz, sy, sx = [10.0], [150.0], [2000.0]
+    rz, ry, rx = [0.0, 0.0], [0.0,270.0], [0.0, 1990.0]
+    padz, pady, padx = 100.0, 50.0, 200.0
+    ndamp = 10
+    ginsu = Ginsu(z0, (dz,dy,dx), nz, (sz,sy,sx), (rz,ry,rx), ((padz,padz),(pady,pady),(padx,padx)), ((0,0),(ndamp,ndamp),(ndamp,ndamp)), dims=(:z,:y,:x), T=Float64)
+    @test check_sr_inside_ginsu(ginsu, (sz,sy,sx), (rz,ry,rx))
+    @test size(domain(ginsu.A))[2:3] == (size(range(ginsu.A))[2] + 2*ndamp, size(range(ginsu.A))[3] + 2*ndamp)
+    @test size(domain(ginsu.B))[2:3] == (size(range(ginsu.B))[2] + 2*ndamp, size(range(ginsu.B))[3] + 2*ndamp)
+    @test size(domain(ginsu.C))[2:3] == size(range(ginsu.C))[2:3]
+    @test size(domain(ginsu.D))[2:3] == size(range(ginsu.D))[2:3]
 end
