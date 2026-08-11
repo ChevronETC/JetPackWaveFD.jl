@@ -216,7 +216,7 @@ function Ginsu(r0::NTuple{N,Real}, dr::NTuple{N,Real}, nr::NTuple{N,Int}, apertu
 end
 
 """
-    g = Ginsu(z0, dr, nz, sour, recr, padr, ndamp; dims=(:z,:y,:x), stencilhalfwidth=2, vector_width=8)
+    g = Ginsu(r0, dr, nz, sour, recr, padr, ndamp; dims=(:z,:y,:x), stencilhalfwidth=2, vector_width=8)
 
 Create a strict Ginsu object directly from source-receiver locations.
 The xy domain of the underlying padding operators will be a box enclosing the source-receiver locations augmented with padding and damping.
@@ -225,13 +225,12 @@ meaning that the domain and range for those operators would be the same in the x
 In the z direction, the padding operator depends on the supplied origin, number of cells, padding, damping, and stencil half-width (no dependence on source-receiver locations).
 xy padding is interpreted differently in this constructor. It is counted from the min-max source-receiver locations, regardless of their midpoints.
 
-# required parameters which are different in type or interpretation from the original Ginsu constructor
-* `z0::Real` origin in the z dimension
+# required parameters which are different in type or interpretation from the original Ginsu constructor `Ginsu(r0, dr, nr, sour, recr, padr, ndamp; dims, stencilhalfwidth, vector_width)`
 * `nz::Int` cell counts in the z dimension
 * `padr::NTuple{N,NTuple{Real,Real}}` padding beyond the source-receiver box in xy dimensions, and beyond the model top and bottom in the z direction.
 """
 function Ginsu(
-        z0::Real,
+        r0::NTuple{N,Real},
         dr::NTuple{N,Real},
         nz::Int64,
         sour::NTuple{N,AbstractArray{Float64,1}},
@@ -252,7 +251,7 @@ function Ginsu(
     lextrng = Array{UnitRange{Int64}}(undef, N)
     lintrng = Array{UnitRange{Int64}}(undef, N)
 
-    r0 = zeros(Real, N)
+    rnew = zeros(Real, N)
     nr = zeros(Int64, N)
     for idim = 1:N
         # source and receiver coords for this dimension:
@@ -260,9 +259,12 @@ function Ginsu(
         soui = sour[idim]
 
         if dims[idim] == :z
-            r0[idim] = z0
+            rnew[idim] = r0[idim]
             nr[idim] = nz
-            lb, ub = r0[idim] - padr[idim][1] - ndamp[idim][1]*dr[idim] - stencilhalfwidth*dr[idim], r0[idim] + (nr[idim]-1+ndamp[idim][2])*dr[idim] + padr[idim][2]
+            lb, ub = rnew[idim] - padr[idim][1] - ndamp[idim][1]*dr[idim] - stencilhalfwidth*dr[idim], rnew[idim] + (nr[idim]-1+ndamp[idim][2])*dr[idim] + padr[idim][2]
+            
+            # integer range
+            idx_lb, idx_ub = floor(Int, (lb - rnew[idim]) / dr[idim]) + 1, ceil(Int, (ub - rnew[idim]) / dr[idim]) + 1
         else
             # compute the min max coordinates
             lb, ub = min(minimum(soui),minimum(reci)), max(maximum(soui),maximum(reci))
@@ -271,12 +273,16 @@ function Ginsu(
             lb -= padr[idim][1] + ndamp[idim][1]*dr[idim]
             ub += padr[idim][2] + ndamp[idim][2]*dr[idim]
 
-            r0[idim] = lb
-            nr[idim] = ceil(Int, (ub - r0[idim]) / dr[idim]) + 1
-        end
+            # make sure the distance between `lb,ub` and `r0` is a multiple of `dr`
+            lb = r0[idim] + floor((lb - r0[idim]) / dr[idim]) * dr[idim]
+            ub = r0[idim] + ceil((ub - r0[idim]) / dr[idim]) * dr[idim]
 
-        # integer range:
-        idx_lb, idx_ub = floor(Int, (lb - r0[idim]) / dr[idim]) + 1, ceil(Int, (ub - r0[idim]) / dr[idim]) + 1
+            rnew[idim] = lb
+            nr[idim] = round(Int, (ub - rnew[idim]) / dr[idim]) + 1
+
+            # integer range
+            idx_lb, idx_ub = 1, nr[idim]
+        end
 
         # ensure lengths are a scalar multiple of vector_width (for vector alignment)
         n = idx_ub - idx_lb + 1

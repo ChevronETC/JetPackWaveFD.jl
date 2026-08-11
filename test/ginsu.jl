@@ -258,13 +258,15 @@ end
 @testset "Ginsu, strict constructor 3D" begin
     nz = 100
     dz, dy, dx = 10.0, 10.0, 20.0
-    z0 = 0.0
+    z0, y0, x0 = 0.0, 0.0, 0.0
     sz, sy, sx = [10.0], [150.0], [2000.0]
     rz, ry, rx = [0.0, 0.0], [0.0,270.0], [0.0, 1990.0]
     padz, pady, padx = 100.0, 50.0, 200.0
     ndamp = 10
-    ginsu = Ginsu(z0, (dz,dy,dx), nz, (sz,sy,sx), (rz,ry,rx), ((padz,padz),(pady,pady),(padx,padx)), ((0,0),(ndamp,ndamp),(ndamp,ndamp)), dims=(:z,:y,:x), T=Float64)
+    ginsu = Ginsu((z0,y0,x0), (dz,dy,dx), nz, (sz,sy,sx), (rz,ry,rx), ((padz,padz),(pady,pady),(padx,padx)), ((0,0),(ndamp,ndamp),(ndamp,ndamp)), dims=(:z,:y,:x), T=Float64)
     @test check_sr_inside_ginsu(ginsu, (sz,sy,sx), (rz,ry,rx))
+    @test ginsu.rₒ[2] == origin(ginsu)[2]
+    @test ginsu.rₒ[3] == origin(ginsu)[3]
     @test size(domain(ginsu.A))[2:3] == (size(range(ginsu.A))[2] + 2*ndamp, size(range(ginsu.A))[3] + 2*ndamp)
     @test size(domain(ginsu.B))[2:3] == (size(range(ginsu.B))[2] + 2*ndamp, size(range(ginsu.B))[3] + 2*ndamp)
     @test size(domain(ginsu.C))[2:3] == size(range(ginsu.C))[2:3]
