@@ -218,13 +218,16 @@ end
 """
     g = Ginsu(z0, dr, nz, sour, recr, padr, ndamp; dims=(:z,:y,:x), stencilhalfwidth=2, vector_width=8)
 
-Create a strict Ginsu object from source-receiver locations such that the underlying padding operators will become no-op in the x,y directions,
-meaning that the domain and range for those operators would be the same in the xy directions. In the z direction, the padding will be similar to the original Ginsu constructor.
-Padding is interpreted differently in this constructor. It is counted from the min-max source-receiver locations, regardless of their midpoints.
+Create a strict Ginsu object directly from source-receiver locations.
+The xy domain of the underlying padding operators will be a box enclosing the source-receiver locations augmented with padding and damping.
+Those padding operators will become no-op in the x,y directions (modulo the damping for the `A` and `B` members),
+meaning that the domain and range for those operators would be the same in the xy directions.
+In the z direction, the padding operator depends on the supplied origin, number of cells, padding, damping, and stencil half-width (no dependence on source-receiver locations).
+xy padding is interpreted differently in this constructor. It is counted from the min-max source-receiver locations, regardless of their midpoints.
 
 # required parameters which are different in type or interpretation from the original Ginsu constructor
-* `z0::Real` model origin in the z dimension
-* `nz::Int` model cell counts in the z dimension
+* `z0::Real` origin in the z dimension
+* `nz::Int` cell counts in the z dimension
 * `padr::NTuple{N,NTuple{Real,Real}}` padding beyond the source-receiver box in xy dimensions, and beyond the model top and bottom in the z direction.
 """
 function Ginsu(
