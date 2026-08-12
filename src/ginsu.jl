@@ -306,7 +306,7 @@ function Ginsu(
     C = JopPad(JetSpace(T,nrTuple), ntuple(i->lextrng[i], N)..., extend=true)
     D = JopPad(JetSpace(T,nrTuple), ntuple(i->lextrng[i], N)..., extend=false)
 
-    Ginsu(A, B, C, D, ntuple(i->Float64(r0[i]), N), ntuple(i->Float64(dr[i]), N))
+    Ginsu(A, B, C, D, ntuple(i->Float64(rnew[i]), N), ntuple(i->Float64(dr[i]), N))
 end
 
 function _op(ginsu::Ginsu; extend=false, interior=false)
