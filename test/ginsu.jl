@@ -219,15 +219,15 @@ end
     end
 end
 
-@testset "Ginsu dot product" begin
+@testset "Ginsu dot product" for extend in (false, true)
     rz = 750.0*ones(size(75:125))
     rx = 10.0*collect(75:125)
     ginsu = Ginsu((0.0,0.0), (10.0,10.0), (201,201), ([1000.0],[1000.0]), (rz,rx), ((500.0,500.0),(500.0,500.0)), ((50,50),(50,50)), T=Float64)
     m = rand(201,201)
     d = rand(size(ginsu)...)
-    ds = sub(ginsu, m, extend=false)
+    ds = sub(ginsu, m, extend=extend)
     ms = zeros(201,201)
-    super!(ms, ginsu, d)
+    super!(ms, ginsu, d, extend=extend)
     lhs = sum(d .* ds)
     rhs = sum(m .* ms)
     err = (lhs - rhs) / (lhs + rhs)
@@ -238,9 +238,9 @@ end
     ginsu = Ginsu((0.0,0.0), (10.0,10.0), (201,201), ([10.0],[1000.0]), (rz,rx), ((500.0,500.0),(500.0,500.0)), ((50,50),(50,50)), T=Float64)
     m = rand(201,201)
     d = rand(size(ginsu)...)
-    ds = sub(ginsu, m, extend=false)
+    ds = sub(ginsu, m, extend=extend)
     ms = zeros(201,201)
-    super!(ms, ginsu, d)
+    super!(ms, ginsu, d, extend=extend)
     lhs = sum(d .* ds)
     rhs = sum(m .* ms)
     @test lhs ≈ rhs rtol=1e-5

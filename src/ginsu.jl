@@ -339,8 +339,8 @@ sub(ginsu::Ginsu, prop::AbstractArray; extend=true, interior=false) = _op(ginsu,
 Store the superset of `mg` corresponding to `ginsu` in `m`. `interior=false` includes the sponge
 region.
 """
-function super!(prop::AbstractArray, ginsu::Ginsu, prop_ginsu::AbstractArray; interior=false, accumulate=false)
-    A = _op(ginsu, extend=false, interior=interior)
+function super!(prop::AbstractArray, ginsu::Ginsu, prop_ginsu::AbstractArray; extend=false, interior=false, accumulate=false)
+    A = _op(ginsu, extend=extend, interior=interior)
     state!(A, (accumulate=accumulate,))
     mul!(prop, A', prop_ginsu)
     prop
