@@ -88,17 +88,8 @@ function Ginsu(
         if dims[idim] == :z
             lb, ub = r0[idim] - padr[idim][1] - ndamp[idim][1]*dr[idim] - stencilhalfwidth*dr[idim], r0[idim] + (nr[idim]-1+ndamp[idim][2])*dr[idim] + padr[idim][2]
         else
-            # midpoints for all sources:
-            midi = Array{Float64}(undef, nsrc, nrec)
-            for isrc = 1:nsrc
-                midi[isrc,:] = (soui[isrc] .+ reci) / 2
-            end
-
-            # midpoint float range:
-            lb, ub = minimum(midi) - padr[idim][1], maximum(midi) + padr[idim][2]
-
             # ensure that the range encloses the source:
-            lb, ub = min(minimum(soui) - padr[idim][1], lb), max(maximum(soui) + padr[idim][2], ub)
+            lb, ub = minimum(soui) - padr[idim][1], maximum(soui) + padr[idim][2]
 
             # ensure that the range encloses all receivers:
             lb, ub = min(minimum(reci) - padr[idim][1], lb), max(maximum(reci) + padr[idim][2], ub)
